@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, globalShortcut } from 'electron';
+import { app, shell, BrowserWindow, ipcMain, globalShortcut, dialog } from 'electron';
 import { join } from 'path';
 import { writeFileSync } from 'fs';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
@@ -120,6 +120,9 @@ app.whenReady().then(() => {
         data: { workspacePath: wsPath },
         error: { name: err.name, message: err.message, stack: err.stack },
       });
+      dialog.showErrorBox('Database Error', err.message);
+      app.quit();
+      return;
     }
   }
 

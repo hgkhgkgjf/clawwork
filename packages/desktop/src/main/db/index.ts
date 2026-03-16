@@ -51,6 +51,7 @@ export function initDatabase(workspacePath: string): void {
   const dbPath = join(workspacePath, DB_FILE_NAME);
   sqlite = new Database(dbPath);
   sqlite.pragma('journal_mode = WAL');
+  sqlite.pragma('foreign_keys = ON');
   sqlite.exec(CREATE_TABLES_SQL);
 
   // Migration: add gateway_id column to existing tasks table
