@@ -2,16 +2,19 @@ import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Brain, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import type { ToolCall } from '@clawwork/shared';
 import { cn } from '@/lib/utils';
 import { motion as motionPresets } from '@/styles/design-tokens';
 import MarkdownContent from './MarkdownContent';
+import ToolCallCard from './ToolCallCard';
 
 interface StreamingMessageProps {
   content: string;
   thinkingContent?: string;
+  toolCalls?: ToolCall[];
 }
 
-const StreamingMessage = memo(function StreamingMessage({ content, thinkingContent }: StreamingMessageProps) {
+const StreamingMessage = memo(function StreamingMessage({ content, thinkingContent, toolCalls }: StreamingMessageProps) {
   const { t } = useTranslation();
   const [thinkingOpen, setThinkingOpen] = useState(true);
 
@@ -68,6 +71,13 @@ const StreamingMessage = memo(function StreamingMessage({ content, thinkingConte
             </AnimatePresence>
           </div>
         )}
+        {toolCalls?.length ? (
+          <div className="mb-2 space-y-1">
+            {toolCalls.map((tc) => (
+              <ToolCallCard key={tc.id} toolCall={tc} />
+            ))}
+          </div>
+        ) : null}
         {content && (
           <div className="leading-relaxed text-[var(--text-primary)]">
             <MarkdownContent content={content} showCursor />

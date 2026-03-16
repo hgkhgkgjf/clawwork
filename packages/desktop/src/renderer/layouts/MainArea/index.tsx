@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PanelRightOpen, RotateCcw, Archive, Plus, Server, ChevronDown, Bot, Cpu, ArrowUp, ArrowDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { ToolCall } from '@clawwork/shared'
 import { useTaskStore } from '@/stores/taskStore'
 import { useMessageStore, EMPTY_MESSAGES } from '@/stores/messageStore'
 import { useUiStore, type GatewayInfo } from '@/stores/uiStore'
@@ -23,6 +24,7 @@ import FileBrowser from '../FileBrowser'
 import logo from '@/assets/logo.png'
 
 const STICK_TO_BOTTOM_THRESHOLD_PX = 60
+const EMPTY_TOOL_CALLS: ToolCall[] = []
 
 interface MainAreaProps {
   onTogglePanel: () => void
@@ -294,6 +296,20 @@ function ChatContent() {
   const isProcessing = useMessageStore((s) =>
     activeTaskId ? s.processingTasks.has(activeTaskId) : false,
   )
+  const streamingToolCalls = useMessageStore((s) => {
+    if (!activeTaskId) return EMPTY_TOOL_CALLS
+    const msgs = s.messagesByTask[activeTaskId]
+    if (!msgs?.length) return EMPTY_TOOL_CALLS
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'user') break
+      if (msgs[i].role === 'assistant' && msgs[i].toolCalls.length > 0) {
+        return msgs[i].toolCalls.some((tc) => tc.status === 'running')
+          ? msgs[i].toolCalls
+          : EMPTY_TOOL_CALLS
+      }
+    }
+    return EMPTY_TOOL_CALLS
+  })
   const viewportRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
@@ -311,7 +327,7 @@ function ChatContent() {
     if (!stickToBottom.current) return
     const el = viewportRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [messages.length, streamingContent, streamingThinkingContent, isProcessing])
+  }, [messages.length, streamingContent, streamingThinkingContent, isProcessing, streamingToolCalls])
 
   return (
     <>
@@ -328,9 +344,9 @@ function ChatContent() {
               onImageClick={setLightboxSrc}
             />
           ))}
-          {(streamingContent || streamingThinkingContent) && <StreamingMessage content={streamingContent} thinkingContent={streamingThinkingContent || undefined} />}
+          {(streamingContent || streamingThinkingContent || streamingToolCalls.length > 0) && <StreamingMessage content={streamingContent} thinkingContent={streamingThinkingContent || undefined} toolCalls={streamingToolCalls} />}
           <AnimatePresence>
-            {isProcessing && !streamingContent && !streamingThinkingContent && <ThinkingIndicator />}
+            {isProcessing && !streamingContent && !streamingThinkingContent && streamingToolCalls.length === 0 && <ThinkingIndicator />}
           </AnimatePresence>
         </div>
       </ScrollArea>
