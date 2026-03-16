@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect, type KeyboardEvent, type ChangeEvent } from 'react';
+import { useRef, useCallback, useState, useEffect, useMemo, type KeyboardEvent, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2, TerminalSquare } from 'lucide-react';
@@ -11,7 +11,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import {
   DropdownMenu, DropdownMenuTrigger,
   DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator,
+  DropdownMenuSeparator, DropdownMenuSub,
+  DropdownMenuSubTrigger, DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { createWhisperSttSession } from '@/lib/voice/whisper-stt';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
@@ -246,23 +247,15 @@ export default function ChatInput() {
     isSupported: whisperAvailable,
   });
 
-  const handleModelChange = useCallback((modelId: string) => {
-    if (!activeTask) return;
-    const { updateTaskMetadata } = useTaskStore.getState();
-    updateTaskMetadata(activeTask.id, { model: modelId });
-    window.clawwork.patchSession(activeTask.gatewayId, activeTask.sessionKey, { modelOverride: modelId }).catch(() => {
-      toast.error('Failed to update model');
-    });
-  }, [activeTask]);
-
-  const handleThinkingChange = useCallback((level: ThinkingLevel) => {
-    if (!activeTask) return;
-    const { updateTaskMetadata } = useTaskStore.getState();
-    updateTaskMetadata(activeTask.id, { thinkingLevel: level === 'off' ? undefined : level });
-    window.clawwork.patchSession(activeTask.gatewayId, activeTask.sessionKey, { thinkingLevel: level }).catch(() => {
-      toast.error('Failed to update thinking level');
-    });
-  }, [activeTask]);
+  const modelsByProvider = useMemo(() => {
+    const groups: Record<string, typeof modelCatalog> = {};
+    for (const m of modelCatalog) {
+      const provider = m.provider ?? 'Other';
+      if (!groups[provider]) groups[provider] = [];
+      groups[provider].push(m);
+    }
+    return groups;
+  }, [modelCatalog]);
 
   // Revoke blob URLs on cleanup
   useEffect(() => {
@@ -338,6 +331,24 @@ export default function ChatInput() {
       toast.error('Failed to send message', { description: msg });
     }
   }, [activeTask, addMessage, setProcessing, updateTaskTitle, isOffline, pendingImages, stopVoiceInput, t]);
+
+  const handleModelQuickSend = useCallback((modelId: string) => {
+    const ta = textareaRef.current;
+    if (!ta || !activeTask) return;
+    ta.value = `/model ${modelId}`;
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+    void handleSend();
+  }, [activeTask, handleSend]);
+
+  const handleThinkingQuickSend = useCallback((level: ThinkingLevel) => {
+    const ta = textareaRef.current;
+    if (!ta || !activeTask) return;
+    ta.value = `/think ${level}`;
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+    void handleSend();
+  }, [activeTask, handleSend]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -534,18 +545,24 @@ export default function ChatInput() {
                   <ChevronDown size={10} className="opacity-50" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
-                {modelCatalog.map((m) => (
-                  <DropdownMenuItem
-                    key={m.id}
-                    onClick={() => handleModelChange(m.id)}
-                    className={cn(m.id === currentModel && 'font-medium text-[var(--accent)]')}
-                  >
-                    <span className="truncate">{m.name ?? m.id}</span>
-                    {m.provider && (
-                      <span className="ml-auto pl-2 text-[10px] text-[var(--text-muted)]">{m.provider}</span>
-                    )}
-                  </DropdownMenuItem>
+              <DropdownMenuContent align="start">
+                {Object.entries(modelsByProvider).map(([provider, models]) => (
+                  <DropdownMenuSub key={provider}>
+                    <DropdownMenuSubTrigger>
+                      <span>{provider}</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {models.map((m) => (
+                        <DropdownMenuItem
+                          key={m.id}
+                          onClick={() => handleModelQuickSend(m.id)}
+                          className={cn(m.id === currentModel && 'font-medium text-[var(--accent)]')}
+                        >
+                          <span className="truncate">{m.name ?? m.id}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                 ))}
                 {modelCatalog.length === 0 && (
                   <DropdownMenuItem disabled>
@@ -575,7 +592,7 @@ export default function ChatInput() {
                 {THINKING_LEVELS.map((level) => (
                   <DropdownMenuItem
                     key={level}
-                    onClick={() => handleThinkingChange(level)}
+                    onClick={() => handleThinkingQuickSend(level)}
                     className={cn(level === currentThinking && 'font-medium text-[var(--accent)]')}
                   >
                     {t(THINKING_LABEL_KEYS[level])}
