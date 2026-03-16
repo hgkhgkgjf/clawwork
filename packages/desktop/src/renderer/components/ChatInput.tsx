@@ -1,8 +1,8 @@
 import { useRef, useCallback, useState, useEffect, useMemo, type KeyboardEvent, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Square, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2, TerminalSquare, Minimize2, RotateCcw } from 'lucide-react';
-import type { MessageImageAttachment, ModelCatalogEntry, ToolEntry } from '@clawwork/shared';
+import { Send, Square, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2, TerminalSquare, Minimize2, RotateCcw, File, FolderPlus } from 'lucide-react';
+import type { MessageImageAttachment, ModelCatalogEntry, ToolEntry, FileIndexEntry } from '@clawwork/shared';
 import { toast } from 'sonner';
 import { cn, modKey } from '@/lib/utils';
 import { motion as motionPresets } from '@/styles/design-tokens';
@@ -25,6 +25,7 @@ import ToolsCatalog from './ToolsCatalog';
 import SlashArgPicker from './SlashArgPicker';
 import type { ArgOption } from './SlashArgPicker';
 import VoiceIntroDialog from './VoiceIntroDialog';
+import FilePicker from './FilePicker';
 import { filterSlashCommands, parseSlashQuery, getEnumOptions, hasArgPicker, type SlashCommand } from '@/lib/slash-commands';
 
 interface PendingImage {
@@ -32,7 +33,8 @@ interface PendingImage {
   previewUrl: string; // blob URL for display
 }
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_TEXT_TOTAL = 500 * 1024;
 const ACCEPTED_TYPES = 'image/png,image/jpeg,image/gif,image/webp';
 const GATEWAY_INJECTED_MODEL = 'gateway-injected';
 const EMPTY_MODELS_CATALOG: ModelCatalogEntry[] = [];
@@ -96,6 +98,12 @@ export default function ChatInput() {
   const [slashIndex, setSlashIndex] = useState(0);
   const slashCommands = filterSlashCommands(slashQuery);
   const [dashboardOpen, setDashboardOpen] = useState(false);
+
+  const [filePickerVisible, setFilePickerVisible] = useState(false);
+  const [fileQuery, setFileQuery] = useState('');
+  const [filePickerIndex, setFilePickerIndex] = useState(0);
+  const [selectedFiles, setSelectedFiles] = useState<FileIndexEntry[]>([]);
+  const filePickerItemsRef = useRef<FileIndexEntry[]>([]);
 
   const [argPickerVisible, setArgPickerVisible] = useState(false);
   const [argPickerCommand, setArgPickerCommand] = useState<SlashCommand | null>(null);
@@ -283,6 +291,38 @@ export default function ChatInput() {
     return groups;
   }, [modelCatalog]);
 
+  const [contextFolders, setContextFolders] = useState<string[]>([]);
+  const activeTaskId = activeTask?.id ?? null;
+  const foldersByTaskRef = useRef<Record<string, string[]>>({});
+
+  useEffect(() => {
+    const key = activeTaskId ?? '';
+    setContextFolders(foldersByTaskRef.current[key] ?? []);
+    setSelectedFiles([]);
+  }, [activeTaskId]);
+
+  const handleAddContextFolder = useCallback(async () => {
+    const res = await window.clawwork.selectContextFolder();
+    if (res.ok && res.result) {
+      const path = res.result as unknown as string;
+      setContextFolders((prev) => {
+        const next = prev.includes(path) ? prev : [...prev, path];
+        const key = activeTaskId ?? '';
+        foldersByTaskRef.current[key] = next;
+        return next;
+      });
+    }
+  }, [activeTaskId]);
+
+  const handleRemoveContextFolder = useCallback((path: string) => {
+    setContextFolders((prev) => {
+      const next = prev.filter((f) => f !== path);
+      const key = activeTaskId ?? '';
+      foldersByTaskRef.current[key] = next;
+      return next;
+    });
+  }, [activeTaskId]);
+
   // Revoke blob URLs on cleanup
   useEffect(() => {
     return () => {
@@ -309,6 +349,54 @@ export default function ChatInput() {
     });
   }, []);
 
+  const updateFilePicker = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const pos = ta.selectionStart ?? 0;
+    const before = ta.value.slice(0, pos);
+    const atMatch = before.match(/@([^\s@]*)$/);
+    if (atMatch) {
+      setFilePickerVisible(true);
+      setFileQuery(atMatch[1]);
+      setFilePickerIndex(0);
+    } else {
+      setFilePickerVisible(false);
+    }
+  }, []);
+
+  const commitFileSelection = useCallback((entry: FileIndexEntry) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+
+    if (selectedFiles.some((f) => f.absolutePath === entry.absolutePath)) {
+      setFilePickerVisible(false);
+      return;
+    }
+
+    const pos = ta.selectionStart ?? 0;
+    const before = ta.value.slice(0, pos);
+    const after = ta.value.slice(pos);
+    const atStart = before.lastIndexOf('@');
+    if (atStart === -1) return;
+
+    const newBefore = before.slice(0, atStart);
+    ta.value = newBefore + after;
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+    const newPos = newBefore.length;
+    ta.setSelectionRange(newPos, newPos);
+    ta.focus();
+
+    setSelectedFiles((prev) => [...prev, entry]);
+    setFilePickerVisible(false);
+    setFileQuery('');
+    setFilePickerIndex(0);
+  }, [selectedFiles]);
+
+  const removeSelectedFile = useCallback((absolutePath: string) => {
+    setSelectedFiles((prev) => prev.filter((f) => f.absolutePath !== absolutePath));
+  }, []);
+
   const handleSend = useCallback(async () => {
     const textarea = textareaRef.current;
     if (!textarea || isOffline) return;
@@ -325,30 +413,75 @@ export default function ChatInput() {
     textarea.value = '';
     textarea.style.height = 'auto';
     const images = [...pendingImages];
+    const files = [...selectedFiles];
     setPendingImages([]);
-
-    const msgImages: MessageImageAttachment[] | undefined = images.length
-      ? images.map((img) => ({ fileName: img.file.name, dataUrl: img.previewUrl }))
-      : undefined;
-
-    addMessage(task.id, 'user', content || '', msgImages);
-    setProcessing(task.id, true);
-
-    if (!task.title) {
-      const titleSource = content || (images.length ? `[${t('chatInput.image')}]` : '');
-      const title = titleSource.slice(0, 30).replace(/\n/g, ' ').trim();
-      updateTaskTitle(task.id, title + (titleSource.length > 30 ? '\u2026' : ''));
-    }
+    setSelectedFiles([]);
 
     try {
-      const attachments = images.length
+      let finalContent = content || '';
+      const extraAttachments: { mimeType: string; fileName: string; content: string }[] = [];
+
+      if (files.length > 0) {
+        const readResults = await Promise.all(
+          files.map((f) => window.clawwork.readContextFile(f.absolutePath, contextFolders).then((res) => ({ file: f, res }))),
+        );
+
+        const textBlocks: string[] = [];
+        let totalTextSize = 0;
+
+        for (const { file: f, res } of readResults) {
+          if (!res.ok || !res.result) continue;
+          const read = res.result as { content: string; mimeType: string; size: number; truncated: boolean; tier: string };
+
+          if (read.tier === 'text') {
+            const blockSize = new TextEncoder().encode(read.content).length;
+            totalTextSize += blockSize;
+            if (totalTextSize > MAX_TEXT_TOTAL) {
+              toast.error('Total file context exceeds 500KB limit');
+              break;
+            }
+            textBlocks.push(`<file path="${f.relativePath}">\n${read.content}\n</file>`);
+          } else if (read.tier === 'image' || read.tier === 'document') {
+            extraAttachments.push({
+              mimeType: read.mimeType,
+              fileName: f.fileName,
+              content: read.content,
+            });
+          }
+        }
+
+        if (textBlocks.length > 0) {
+          finalContent = textBlocks.join('\n\n') + '\n\n' + finalContent;
+        }
+      }
+
+      const msgImages: MessageImageAttachment[] | undefined = images.length
+        ? images.map((img) => ({ fileName: img.file.name, dataUrl: img.previewUrl }))
+        : undefined;
+
+      addMessage(task.id, 'user', finalContent, msgImages);
+      setProcessing(task.id, true);
+
+      if (!task.title) {
+        const titleSource = content || (files.length ? `[@${files[0].fileName}]` : '') || (images.length ? `[${t('chatInput.image')}]` : '');
+        const title = titleSource.slice(0, 30).replace(/\n/g, ' ').trim();
+        updateTaskTitle(task.id, title + (titleSource.length > 30 ? '\u2026' : ''));
+      }
+
+      const imageAttachments = images.length
         ? await Promise.all(images.map(async (img) => ({
             mimeType: img.file.type || 'image/png',
             fileName: img.file.name,
             content: await readAsBase64(img.file),
           })))
-        : undefined;
-      const result = await window.clawwork.sendMessage(task.gatewayId, task.sessionKey, content || '', attachments);
+        : [];
+      const allAttachments = [...imageAttachments, ...extraAttachments];
+      const result = await window.clawwork.sendMessage(
+        task.gatewayId,
+        task.sessionKey,
+        finalContent,
+        allAttachments.length > 0 ? allAttachments : undefined,
+      );
       if (result && !result.ok) {
         setProcessing(task.id, false);
         const msg = result.error || t('errors.sendFailed');
@@ -361,7 +494,7 @@ export default function ChatInput() {
       addMessage(task.id, 'system', `${t('errors.sendFailed')}: ${msg}`);
       toast.error('Failed to send message', { description: msg });
     }
-  }, [activeTask, addMessage, setProcessing, updateTaskTitle, isOffline, pendingImages, stopVoiceInput, commitPendingTask, t]);
+  }, [activeTask, addMessage, setProcessing, updateTaskTitle, isOffline, pendingImages, selectedFiles, contextFolders, stopVoiceInput, commitPendingTask, t]);
 
   const handleModelQuickSend = useCallback((modelId: string) => {
     const ta = textareaRef.current;
@@ -439,7 +572,30 @@ export default function ChatInput() {
         return;
       }
 
-      // ── Arg picker keyboard navigation ────────────────────────────────────────
+      if (filePickerVisible) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setFilePickerIndex((i) => i + 1);
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setFilePickerIndex((i) => Math.max(0, i - 1));
+          return;
+        }
+        if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+          e.preventDefault();
+          const item = filePickerItemsRef.current[filePickerIndex];
+          if (item && item.tier !== 'unsupported') commitFileSelection(item);
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setFilePickerVisible(false);
+          return;
+        }
+      }
+
       if (argPickerVisible && argPickerOptions.length > 0) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -506,7 +662,7 @@ export default function ChatInput() {
         }
       }
     },
-    [argPickerVisible, argPickerOptions, argPickerIndex, commitArgOption, closeArgPicker, slashMenuVisible, slashCommands, slashIndex, commitSlashCommand, handleSend, handleAbort, isGenerating, handleVoiceKeyDown, sendShortcut],
+    [filePickerVisible, filePickerIndex, commitFileSelection, argPickerVisible, argPickerOptions, argPickerIndex, commitArgOption, closeArgPicker, slashMenuVisible, slashCommands, slashIndex, commitSlashCommand, handleSend, handleAbort, isGenerating, handleVoiceKeyDown, sendShortcut],
   );
 
   const handleInput = useCallback(() => {
@@ -516,7 +672,8 @@ export default function ChatInput() {
     textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
     if (argPickerVisible) closeArgPicker();
     updateSlashMenu();
-  }, [updateSlashMenu, argPickerVisible, closeArgPicker]);
+    updateFilePicker();
+  }, [updateSlashMenu, argPickerVisible, closeArgPicker, updateFilePicker]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
@@ -766,6 +923,18 @@ export default function ChatInput() {
             />
           )}
 
+          <FilePicker
+            visible={filePickerVisible}
+            query={fileQuery}
+            folders={contextFolders}
+            selectedIndex={filePickerIndex}
+            onSelect={commitFileSelection}
+            onHoverIndex={setFilePickerIndex}
+            onClose={() => setFilePickerVisible(false)}
+            onItemsChange={(items) => { filePickerItemsRef.current = items; }}
+            onAddFolder={handleAddContextFolder}
+          />
+
           {argPickerVisible && argPickerCommand && (
             <SlashArgPicker
               commandName={argPickerCommand.name}
@@ -813,6 +982,28 @@ export default function ChatInput() {
             </motion.div>
 
             <div className="flex-1 relative min-h-[24px]">
+              {selectedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pb-2">
+                  {selectedFiles.map((f) => (
+                    <span
+                      key={f.absolutePath}
+                      className={cn(
+                        'inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg',
+                        'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]',
+                      )}
+                    >
+                      <File size={12} className="flex-shrink-0" />
+                      {f.fileName}
+                      <button
+                        onClick={() => removeSelectedFile(f.absolutePath)}
+                        className="ml-0.5 opacity-50 hover:opacity-100"
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <textarea
                 ref={textareaRef}
                 rows={1}
@@ -942,13 +1133,48 @@ export default function ChatInput() {
           </div>
         </div>
 
-        <p className="text-xs text-[var(--text-muted)] text-center mt-2.5 tracking-wide">
-          {isOffline
-            ? t('chatInput.offlineHint')
-            : sendShortcut === 'cmdEnter'
-              ? t('chatInput.poweredBy') + ' · ' + t('chatInput.toSend', { mod: modKey })
-              : t('chatInput.poweredBy')}
-        </p>
+        <div className="flex items-center mt-2 gap-1.5 min-h-[24px]">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleAddContextFolder}
+                disabled={disabled}
+                className={cn(
+                  'inline-flex items-center gap-1 px-1.5 py-1 rounded-lg text-xs flex-shrink-0',
+                  'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
+                  'hover:bg-[var(--bg-hover)] transition-colors',
+                )}
+              >
+                <FolderPlus size={12} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Add context folder for @ file references</TooltipContent>
+          </Tooltip>
+          {contextFolders.map((folder) => (
+            <span
+              key={folder}
+              className={cn(
+                'inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md flex-shrink-0 max-w-[140px]',
+                'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
+              )}
+            >
+              <span className="truncate">{folder.split('/').pop()}</span>
+              <button
+                onClick={() => handleRemoveContextFolder(folder)}
+                className="opacity-50 hover:opacity-100 flex-shrink-0"
+              >
+                <X size={9} />
+              </button>
+            </span>
+          ))}
+          <p className="flex-1 text-xs text-[var(--text-muted)] text-right tracking-wide">
+            {isOffline
+              ? t('chatInput.offlineHint')
+              : sendShortcut === 'cmdEnter'
+                ? t('chatInput.poweredBy') + ' · ' + t('chatInput.toSend', { mod: modKey })
+                : t('chatInput.poweredBy')}
+          </p>
+        </div>
       </div>
       <VoiceIntroDialog
         open={isVoiceIntroOpen}

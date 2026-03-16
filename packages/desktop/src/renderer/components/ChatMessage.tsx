@@ -1,7 +1,7 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Message } from '@clawwork/shared';
-import { Bot, User, Brain, ChevronDown } from 'lucide-react';
+import { Bot, User, Brain, ChevronDown, FileCode } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { motion as motionPresets } from '@/styles/design-tokens';
@@ -13,14 +13,53 @@ interface ChatMessageProps {
   highlighted?: boolean;
   onHighlightDone?: () => void;
   onImageClick?: (src: string) => void;
+  onFileClick?: (file: { path: string; content: string }) => void;
 }
 
-const ChatMessage = memo(function ChatMessage({ message, highlighted, onHighlightDone, onImageClick }: ChatMessageProps) {
+function parseFileBlocks(content: string): { files: { path: string; content: string; lineCount: number }[]; text: string } {
+  const fileRegex = /<file path="([^"]+)">\n([\s\S]*?)\n<\/file>/g;
+  const files: { path: string; content: string; lineCount: number }[] = [];
+  let match;
+  while ((match = fileRegex.exec(content)) !== null) {
+    const fileContent = match[2];
+    files.push({ path: match[1], content: fileContent, lineCount: fileContent.split('\n').length });
+  }
+  const text = content.replace(fileRegex, '').trim();
+  return { files, text };
+}
+
+function FileBlockChip({
+  file,
+  onClick,
+}: {
+  file: { path: string; content: string; lineCount: number };
+  onClick?: () => void;
+}) {
+  const fileName = file.path.split('/').pop() ?? file.path;
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs mb-1.5 mr-1.5',
+        'bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] transition-colors',
+        'cursor-pointer',
+      )}
+    >
+      <FileCode size={13} className="text-[var(--accent)] flex-shrink-0" />
+      <span className="text-[var(--text-secondary)] font-medium truncate max-w-[200px]">{fileName}</span>
+      <span className="text-[var(--text-muted)] flex-shrink-0">{file.lineCount}L</span>
+    </button>
+  );
+}
+
+const ChatMessage = memo(function ChatMessage({ message, highlighted, onHighlightDone, onImageClick, onFileClick }: ChatMessageProps) {
   const { t } = useTranslation();
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const ref = useRef<HTMLDivElement>(null);
   const [thinkingOpen, setThinkingOpen] = useState(false);
+  const parsedFiles = useMemo(() => isUser ? parseFileBlocks(message.content) : null, [isUser, message.content]);
 
   useEffect(() => {
     if (!highlighted || !ref.current) return;
@@ -128,23 +167,38 @@ const ChatMessage = memo(function ChatMessage({ message, highlighted, onHighligh
         )}
 
         {/* Text content */}
-        {(message.content || !images?.length) && (
-          <div
-            className={cn(
+        {(message.content || !images?.length) && (() => {
+          if (isUser && parsedFiles) {
+            const { files, text } = parsedFiles;
+            const hasContent = files.length > 0 || text;
+            if (!hasContent) return null;
+            return (
+              <div className={cn(
+                'inline-block leading-relaxed rounded-2xl px-4 py-3',
+                'bg-[var(--bg-tertiary)] text-[var(--text-primary)]',
+              )}>
+                <div className="flex flex-wrap">
+                  {files.map((f, i) => (
+                    <FileBlockChip
+                      key={`${f.path}-${i}`}
+                      file={f}
+                      onClick={() => onFileClick?.({ path: f.path, content: f.content })}
+                    />
+                  ))}
+                </div>
+                {text && <p className="whitespace-pre-wrap">{text}</p>}
+              </div>
+            );
+          }
+          return (
+            <div className={cn(
               'inline-block leading-relaxed rounded-2xl px-4 py-3',
-              isUser
-                ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]'
-                : 'text-[var(--text-primary)]',
-              isUser && !message.content && 'hidden',
-            )}
-          >
-            {isUser ? (
-              <p className="whitespace-pre-wrap">{message.content}</p>
-            ) : (
+              'text-[var(--text-primary)]',
+            )}>
               <MarkdownContent content={message.content} onImageClick={onImageClick} showMessageCopy />
-            )}
-          </div>
-        )}
+            </div>
+          );
+        })()}
         {message.toolCalls.length > 0 && (
           <div className="mt-2 space-y-1">
             {message.toolCalls.map((tc) => (

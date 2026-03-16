@@ -16,6 +16,7 @@ import StreamingMessage from '@/components/StreamingMessage'
 import ThinkingIndicator from '@/components/ThinkingIndicator'
 import ChatInput from '@/components/ChatInput'
 import ImageLightbox from '@/components/ImageLightbox'
+import FilePreviewModal from '@/components/FilePreviewModal'
 import FileBrowser from '../FileBrowser'
 import logo from '@/assets/logo.png'
 import { fetchAgentsForGateway } from '@/hooks/useGatewayDispatcher'
@@ -331,6 +332,8 @@ function ChatContent() {
   const stickToBottom = useRef(true)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
   const closeLightbox = useCallback(() => setLightboxSrc(null), [])
+  const [previewFile, setPreviewFile] = useState<{ path: string; content: string } | null>(null)
+  const closeFilePreview = useCallback(() => setPreviewFile(null), [])
   const handleHighlightDone = useCallback(() => setHighlightedMessage(null), [setHighlightedMessage])
 
   const handleScroll = useCallback(() => {
@@ -359,6 +362,7 @@ function ChatContent() {
               highlighted={msg.id === highlightedId}
               onHighlightDone={handleHighlightDone}
               onImageClick={setLightboxSrc}
+              onFileClick={setPreviewFile}
             />
           ))}
           {(streamingContent || streamingThinkingContent || streamingToolCalls.length > 0) && <StreamingMessage content={streamingContent} thinkingContent={streamingThinkingContent || undefined} toolCalls={streamingToolCalls} />}
@@ -369,6 +373,7 @@ function ChatContent() {
       </ScrollArea>
       <ChatInput />
       <ImageLightbox src={lightboxSrc} onClose={closeLightbox} />
+      <FilePreviewModal file={previewFile} onClose={closeFilePreview} />
     </>
   )
 }

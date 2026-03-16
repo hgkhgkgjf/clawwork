@@ -208,6 +208,34 @@ export interface SessionPatchParams {
 // Exec Approval (operator.approvals scope)
 // ------------------------------------------------------------
 
+// ------------------------------------------------------------
+// File Context (@ file picker)
+// ------------------------------------------------------------
+
+export type FileTier = 'text' | 'image' | 'document' | 'unsupported';
+
+export interface FileIndexEntry {
+  relativePath: string;
+  absolutePath: string;
+  fileName: string;
+  size: number;
+  mtime: number;
+  mimeType: string;
+  tier: FileTier;
+}
+
+export interface FileReadResult {
+  content: string;
+  mimeType: string;
+  size: number;
+  truncated: boolean;
+  tier: 'text' | 'image' | 'document';
+}
+
+// ------------------------------------------------------------
+// Exec Approval (operator.approvals scope)
+// ------------------------------------------------------------
+
 export type ApprovalDecision = 'allow-once' | 'allow-always' | 'deny';
 
 export interface ExecApprovalRequest {

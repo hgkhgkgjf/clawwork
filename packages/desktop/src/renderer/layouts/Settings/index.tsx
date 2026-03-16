@@ -211,6 +211,7 @@ export default function Settings({ onClose }: SettingsProps) {
 
   useEffect(() => { loadGateways() }, [loadGateways])
 
+
   useEffect(() => {
     window.clawwork.getQuickLaunchConfig().then((config) => {
       setQuickLaunchEnabled(config.enabled)

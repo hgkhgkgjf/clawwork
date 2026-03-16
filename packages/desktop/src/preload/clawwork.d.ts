@@ -290,6 +290,10 @@ export interface ClawWorkAPI {
   onTrayNavigateTask: (callback: (taskId: string) => void) => (() => void);
   onTrayOpenSettings: (callback: () => void) => (() => void);
 
+  selectContextFolder: () => Promise<IpcResult>;
+  listContextFiles: (folders: string[], query?: string) => Promise<IpcResult>;
+  readContextFile: (absolutePath: string, folders: string[]) => Promise<IpcResult>;
+
   quickLaunchSubmit: (message: string) => void;
   quickLaunchHide: () => void;
   getQuickLaunchConfig: () => Promise<QuickLaunchConfigResult>;

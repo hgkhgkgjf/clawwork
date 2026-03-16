@@ -201,6 +201,13 @@ function buildApi(): ClawWorkAPI {
       ipcRenderer.on('quick-launch:submit', listener);
       return () => { ipcRenderer.removeListener('quick-launch:submit', listener); };
     },
+
+    selectContextFolder: () =>
+      ipcRenderer.invoke('context:select-folder'),
+    listContextFiles: (folders: string[], query?: string) =>
+      ipcRenderer.invoke('context:list-files', { folders, query }),
+    readContextFile: (absolutePath: string, folders: string[]) =>
+      ipcRenderer.invoke('context:read-file', { absolutePath, folders }),
   };
 }
 

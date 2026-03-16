@@ -15,6 +15,7 @@ import { registerDebugHandlers } from './ipc/debug-handlers.js';
 import { configureVoicePermissionHandlers, registerVoiceHandlers } from './ipc/voice-handlers.js';
 import { registerTrayHandlers } from './ipc/tray-handlers.js';
 import { registerQuickLaunchHandlers } from './ipc/quick-launch-handlers.js';
+import { registerContextHandlers } from './ipc/context-handlers.js';
 import { initTray, destroyTray, updateTrayWindow } from './tray.js';
 import { initQuickLaunch, destroyQuickLaunch, updateQuickLaunchMainWindow } from './quick-launch.js';
 import { getWorkspacePath, readConfig } from './workspace/config.js';
@@ -114,6 +115,7 @@ app.whenReady().then(() => {
   configureVoicePermissionHandlers();
   registerTrayHandlers();
   registerQuickLaunchHandlers();
+  registerContextHandlers();
 
   const wsPath = getWorkspacePath();
   if (wsPath) {
