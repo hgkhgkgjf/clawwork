@@ -4,6 +4,7 @@ import './styles/theme.css';
 import i18n from './i18n';
 import { useUiStore, type Language } from './stores/uiStore';
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Restore persisted language preference
 window.clawwork?.getSettings().then((settings) => {
@@ -17,6 +18,8 @@ window.clawwork?.getSettings().then((settings) => {
 const root = createRoot(document.getElementById('root')!);
 root.render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 );
