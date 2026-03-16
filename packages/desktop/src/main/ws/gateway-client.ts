@@ -28,6 +28,8 @@ import {
 } from './device-identity.js';
 import { getDebugLogger } from '../debug/index.js';
 
+const WS_CLOSE_POLICY_VIOLATION = 1008;
+
 type PendingReq = {
   resolve: (payload: Record<string, unknown>) => void;
   reject: (err: Error) => void;
@@ -132,11 +134,11 @@ export class GatewayClient {
         sendToWindow(this.mainWindow, 'gateway-status', {
           gatewayId: this.gatewayId,
           connected: false,
-          ...(code === 1008 ? { error: reasonStr || 'policy violation' } : {}),
+          ...(code === WS_CLOSE_POLICY_VIOLATION ? { error: reasonStr || 'policy violation' } : {}),
         });
       }
       // Don't retry when server explicitly rejects (pairing required, auth denied)
-      if (code === 1008) return;
+      if (code === WS_CLOSE_POLICY_VIOLATION) return;
       this.scheduleReconnect();
     });
 
@@ -198,7 +200,7 @@ export class GatewayClient {
           gatewayId: this.gatewayId,
           data: { payload: summarizePayload(frame.payload) },
         });
-        this.ws?.close(1008, 'connect challenge missing nonce');
+        this.ws?.close(WS_CLOSE_POLICY_VIOLATION, 'connect challenge missing nonce');
         return;
       }
       this.connectNonce = nonce;
@@ -322,7 +324,7 @@ export class GatewayClient {
           requestId: 'connect-handshake',
           error: { name: err.name, message: err.message, stack: err.stack },
         });
-        this.ws?.close();
+        this.ws?.close(WS_CLOSE_POLICY_VIOLATION, 'auth failed');
       });
   }
 
