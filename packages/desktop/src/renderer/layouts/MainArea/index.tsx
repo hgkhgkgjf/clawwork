@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { PanelRightOpen, RotateCcw, Archive, Server, Bot, Cpu, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react'
+import { PanelRightOpen, RotateCcw, Archive, Server, Bot, Cpu, ArrowUp, ArrowDown, ChevronRight, DollarSign, RefreshCw, AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { ToolCall } from '@clawwork/shared'
 import { useTaskStore } from '@/stores/taskStore'
 import { useMessageStore, EMPTY_MESSAGES } from '@/stores/messageStore'
 import { useUiStore } from '@/stores/uiStore'
-import { cn, formatRelativeTime, formatTokenCount } from '@/lib/utils'
+import { cn, formatRelativeTime, formatTokenCount, formatCost } from '@/lib/utils'
 import { motion as motionPresets } from '@/styles/design-tokens'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import ChatMessage from '@/components/ChatMessage'
 import StreamingMessage from '@/components/StreamingMessage'
 import ThinkingIndicator from '@/components/ThinkingIndicator'
@@ -19,6 +20,7 @@ import ImageLightbox from '@/components/ImageLightbox'
 import FilePreviewModal from '@/components/FilePreviewModal'
 import FileBrowser from '../FileBrowser'
 import logo from '@/assets/logo.png'
+import { useUsageStore } from '@/stores/usageStore'
 import { fetchAgentsForGateway } from '@/hooks/useGatewayDispatcher'
 
 const STICK_TO_BOTTOM_THRESHOLD_PX = 60
@@ -185,10 +187,30 @@ function ChatHeader({ onTogglePanel }: { onTogglePanel: () => void }) {
       ? s.agentCatalogByGateway[activeTask.gatewayId]?.agents.find((a) => a.id === activeTask.agentId)
       : undefined,
   )
+  const sessionUsage = useUsageStore((s) => s.sessionUsage)
+  const cost = useUsageStore((s) => s.cost)
+  const usageStatus = useUsageStore((s) => s.status)
+  const usageLoading = useUsageStore((s) => s.loading)
+  const fetchUsage = useUsageStore((s) => s.fetchUsage)
+  const startAutoRefresh = useUsageStore((s) => s.startAutoRefresh)
+  const stopAutoRefresh = useUsageStore((s) => s.stopAutoRefresh)
+
+  const costGatewayId = activeTask?.gatewayId ?? ''
+  const sessionKey = activeTask?.sessionKey ?? ''
+  useEffect(() => {
+    if (costGatewayId) startAutoRefresh(costGatewayId, sessionKey || undefined)
+    return () => stopAutoRefresh()
+  }, [costGatewayId, sessionKey, startAutoRefresh, stopAutoRefresh])
+
+  const inputTokens = sessionUsage?.input ?? activeTask?.inputTokens ?? null
+  const outputTokens = sessionUsage?.output ?? activeTask?.outputTokens ?? null
+  const contextTokens = activeTask?.contextTokens ?? null
+  const sessionCost = sessionUsage?.totalCost ?? null
+  const hasUsageData = inputTokens != null || outputTokens != null || (contextTokens != null && contextTokens > 0) || (sessionCost != null && sessionCost > 0)
 
   return (
-    <header className="titlebar-drag flex items-center justify-between h-12 px-5 border-b border-[var(--border)] flex-shrink-0">
-      <div className="flex items-center gap-2.5">
+    <header className="titlebar-drag flex items-center justify-between h-12 px-5 border-b border-[var(--border)] flex-shrink-0 relative z-[51]">
+      <div className="titlebar-no-drag flex items-center gap-2.5">
         {activeTask ? (
           <>
             <h2 className="font-medium text-[var(--text-primary)] truncate">
@@ -237,41 +259,158 @@ function ChatHeader({ onTogglePanel }: { onTogglePanel: () => void }) {
                 <span className="max-w-[100px] truncate">{activeTask.model}</span>
               </span>
             )}
-            {(activeTask?.inputTokens != null || activeTask?.outputTokens != null) && (
-              <span className="inline-flex items-center gap-0.5 text-xs text-[var(--text-muted)]">
-                {activeTask.inputTokens != null && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+            {hasUsageData && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="inline-flex items-center gap-1 text-xs text-[var(--text-muted)] hover:bg-[var(--bg-hover)] rounded px-1 py-0.5 transition-colors cursor-pointer">
+                    {inputTokens != null && (
                       <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-[var(--bg-tertiary)]">
                         <ArrowUp size={9} />
-                        {formatTokenCount(activeTask.inputTokens)}
+                        {formatTokenCount(inputTokens)}
                       </span>
-                    </TooltipTrigger>
-                    <TooltipContent>{t('rightPanel.inputTokens')}: {activeTask.inputTokens.toLocaleString()}</TooltipContent>
-                  </Tooltip>
-                )}
-                {activeTask.outputTokens != null && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+                    )}
+                    {outputTokens != null && (
                       <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-[var(--bg-tertiary)]">
                         <ArrowDown size={9} />
-                        {formatTokenCount(activeTask.outputTokens)}
+                        {formatTokenCount(outputTokens)}
                       </span>
-                    </TooltipTrigger>
-                    <TooltipContent>{t('rightPanel.outputTokens')}: {activeTask.outputTokens.toLocaleString()}</TooltipContent>
-                  </Tooltip>
-                )}
-                {activeTask.contextTokens != null && activeTask.contextTokens > 0 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+                    )}
+                    {contextTokens != null && contextTokens > 0 && (
                       <span className="px-1 py-0.5 rounded bg-[var(--bg-tertiary)]">
-                        ctx {Math.round((activeTask.contextTokens / 200_000) * 100)}%
+                        ctx {Math.round((contextTokens / 200_000) * 100)}%
                       </span>
-                    </TooltipTrigger>
-                    <TooltipContent>{t('rightPanel.contextUsage')}: {activeTask.contextTokens.toLocaleString()} tokens</TooltipContent>
-                  </Tooltip>
-                )}
-              </span>
+                    )}
+                    {sessionCost != null && sessionCost > 0 && (
+                      <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--accent)]">
+                        <DollarSign size={9} />
+                        {formatCost(sessionCost)}
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 max-h-[70vh] overflow-y-auto">
+                  <div className="space-y-3">
+                    {sessionUsage && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-[var(--text-secondary)]">{t('usage.sessionCost')}</span>
+                          <span className="text-lg font-semibold text-[var(--accent)]">{formatCost(sessionUsage.totalCost)}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-[var(--text-muted)]">
+                          <div className="flex items-center gap-1">
+                            <ArrowUp size={10} />
+                            <span>{t('usage.inputTokens')}: {formatTokenCount(sessionUsage.input)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <ArrowDown size={10} />
+                            <span>{t('usage.outputTokens')}: {formatTokenCount(sessionUsage.output)}</span>
+                          </div>
+                          {sessionUsage.cacheRead > 0 && (
+                            <div>{t('usage.cacheRead')}: {formatTokenCount(sessionUsage.cacheRead)}</div>
+                          )}
+                          {sessionUsage.cacheWrite > 0 && (
+                            <div>{t('usage.cacheWrite')}: {formatTokenCount(sessionUsage.cacheWrite)}</div>
+                          )}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)]">
+                          {t('usage.totalTokens')}: {formatTokenCount(sessionUsage.totalTokens)}
+                        </div>
+                        {contextTokens != null && contextTokens > 0 && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+                              <span>{t('rightPanel.contextUsage')}</span>
+                              <span>{Math.round((contextTokens / 200_000) * 100)}%</span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-[var(--bg-secondary)] overflow-hidden">
+                              <div
+                                className={cn(
+                                  'h-full rounded-full transition-all duration-300',
+                                  contextTokens / 200_000 >= 0.9 ? 'bg-[var(--error)]' : contextTokens / 200_000 >= 0.7 ? 'bg-[var(--warning)]' : 'bg-[var(--accent)]',
+                                )}
+                                style={{ width: `${Math.min(100, (contextTokens / 200_000) * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {cost && (
+                      <div className={cn('space-y-2', sessionUsage && 'border-t border-[var(--border)] pt-3')}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-[var(--text-secondary)]">{t('usage.instanceCost')}</span>
+                          <span className="text-sm font-semibold text-[var(--text-primary)]">{formatCost(cost.totals.totalCost)}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5 text-[10px] text-[var(--text-muted)]">
+                          <div>{t('usage.inputTokens')}: {formatTokenCount(cost.totals.input)}</div>
+                          <div>{t('usage.outputTokens')}: {formatTokenCount(cost.totals.output)}</div>
+                        </div>
+                        {cost.days > 0 && (
+                          <div className="text-[10px] text-[var(--text-muted)]">
+                            {t('usage.period', { days: cost.days })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {usageStatus && usageStatus.providers.length > 0 && (
+                      <div className="space-y-2 border-t border-[var(--border)] pt-3">
+                        <span className="text-xs font-medium text-[var(--text-secondary)]">{t('usage.rateLimits')}</span>
+                        {usageStatus.providers.map((provider) => (
+                          <div key={provider.provider} className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-[var(--text-primary)]">{provider.displayName}</span>
+                              {provider.plan && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-dim)] text-[var(--accent)]">{provider.plan}</span>
+                              )}
+                            </div>
+                            {provider.error && (
+                              <div className="text-[10px] text-[var(--error)] flex items-center gap-1">
+                                <AlertTriangle size={10} />
+                                {provider.error}
+                              </div>
+                            )}
+                            {provider.windows.map((w, i) => (
+                              <div key={i} className="space-y-0.5">
+                                <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
+                                  <span>{w.label}</span>
+                                  <span className={cn(w.usedPercent >= 90 && 'text-[var(--error)]')}>
+                                    {Math.round(w.usedPercent)}%
+                                  </span>
+                                </div>
+                                <div className="h-1 rounded-full bg-[var(--bg-secondary)] overflow-hidden">
+                                  <div
+                                    className={cn(
+                                      'h-full rounded-full transition-all duration-300',
+                                      w.usedPercent >= 90 ? 'bg-[var(--error)]' : w.usedPercent >= 70 ? 'bg-[var(--warning)]' : 'bg-[var(--accent)]',
+                                    )}
+                                    style={{ width: `${Math.min(100, w.usedPercent)}%` }}
+                                  />
+                                </div>
+                                {w.resetAt && (
+                                  <div className="text-[10px] text-[var(--text-muted)]">
+                                    {t('usage.resetsAt', { time: new Date(w.resetAt).toLocaleTimeString() })}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end border-t border-[var(--border)] pt-2">
+                      <button
+                        onClick={() => fetchUsage(costGatewayId, sessionKey || undefined)}
+                        disabled={usageLoading}
+                        className="p-1 rounded hover:bg-[var(--bg-hover)] transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer disabled:opacity-50"
+                      >
+                        <RefreshCw size={12} className={cn(usageLoading && 'animate-spin')} />
+                      </button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
           </>
         ) : (

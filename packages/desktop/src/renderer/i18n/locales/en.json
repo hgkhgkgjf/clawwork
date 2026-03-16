@@ -235,6 +235,18 @@
     "deny": "Deny",
     "newRequest": "Agent is requesting execution approval"
   },
+  "usage": {
+    "sessionCost": "This Session",
+    "instanceCost": "Instance Total (30d)",
+    "inputTokens": "Input",
+    "outputTokens": "Output",
+    "cacheRead": "Cache read",
+    "cacheWrite": "Cache write",
+    "totalTokens": "Total tokens",
+    "period": "Last {{days}} days",
+    "rateLimits": "Rate Limits",
+    "resetsAt": "Resets at {{time}}"
+  },
   "pairing": {
     "title": "Device Pairing Required",
     "description": "This is the first time connecting to this remote gateway. The gateway administrator needs to approve this device before it can connect.",

@@ -4,6 +4,21 @@ import { readConfig } from '../workspace/config.js';
 import { isClawWorkSession, parseTaskIdFromSessionKey, parseAgentIdFromSessionKey } from '@clawwork/shared';
 import type { ChatAttachment } from '@clawwork/shared';
 import { getDebugLogger } from '../debug/index.js';
+import type { GatewayClient } from '../ws/gateway-client.js';
+
+async function gatewayRpc(
+  gatewayId: string,
+  fn: (gw: GatewayClient) => Promise<Record<string, unknown> | void>,
+): Promise<{ ok: boolean; result?: Record<string, unknown>; error?: string }> {
+  const gw = getGatewayClient(gatewayId);
+  if (!gw?.isConnected) return { ok: false, error: 'gateway not connected' };
+  try {
+    const result = await fn(gw);
+    return result ? { ok: true, result } : { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'unknown error' };
+  }
+}
 
 interface GatewaySessionRow {
   key: string;
@@ -335,17 +350,25 @@ export function registerWsHandlers(): void {
   ipcMain.handle('ws:tools-catalog', async (_event, payload: {
     gatewayId: string;
     agentId?: string;
-  }) => {
-    const gw = getGatewayClient(payload.gatewayId);
-    if (!gw?.isConnected) return { ok: false, error: 'gateway not connected' };
-    try {
-      const result = await gw.getToolsCatalog(payload.agentId);
-      return { ok: true, result };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'unknown error';
-      return { ok: false, error: msg };
-    }
-  });
+  }) =>
+    gatewayRpc(payload.gatewayId, (gw) => gw.getToolsCatalog(payload.agentId)),
+  );
+
+  ipcMain.handle('ws:usage-status', async (_event, payload: { gatewayId: string }) =>
+    gatewayRpc(payload.gatewayId, (gw) => gw.getUsageStatus()),
+  );
+
+  ipcMain.handle('ws:usage-cost', async (_event, payload: {
+    gatewayId: string; startDate?: string; endDate?: string; days?: number;
+  }) =>
+    gatewayRpc(payload.gatewayId, (gw) => gw.getUsageCost({
+      startDate: payload.startDate, endDate: payload.endDate, days: payload.days,
+    })),
+  );
+
+  ipcMain.handle('ws:session-usage', async (_event, payload: { gatewayId: string; sessionKey: string }) =>
+    gatewayRpc(payload.gatewayId, (gw) => gw.getSessionUsage({ key: payload.sessionKey })),
+  );
 
   ipcMain.handle('ws:exec-approval-resolve', async (_event, payload: {
     gatewayId: string;

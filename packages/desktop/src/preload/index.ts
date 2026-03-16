@@ -153,6 +153,13 @@ function buildApi(): ClawWorkAPI {
     deleteTask: (taskId: string) =>
       ipcRenderer.invoke('data:delete-task', { id: taskId }),
 
+    getUsageStatus: (gatewayId: string) =>
+      ipcRenderer.invoke('ws:usage-status', { gatewayId }),
+    getUsageCost: (gatewayId: string, params?: { startDate?: string; endDate?: string; days?: number }) =>
+      ipcRenderer.invoke('ws:usage-cost', { gatewayId, ...params }),
+    getSessionUsage: (gatewayId: string, sessionKey: string) =>
+      ipcRenderer.invoke('ws:session-usage', { gatewayId, sessionKey }),
+
     resolveExecApproval: (gatewayId: string, id: string, decision: string) =>
       ipcRenderer.invoke('ws:exec-approval-resolve', { gatewayId, id, decision }),
 

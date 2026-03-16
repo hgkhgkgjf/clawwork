@@ -563,6 +563,26 @@ export class GatewayClient {
     return this.sendReq('tools.catalog', params);
   }
 
+  async getUsageStatus(): Promise<Record<string, unknown>> {
+    return this.sendReq('usage.status', {});
+  }
+
+  async getUsageCost(params?: {
+    startDate?: string;
+    endDate?: string;
+    days?: number;
+  }): Promise<Record<string, unknown>> {
+    return this.sendReq('usage.cost', (params as Record<string, unknown>) ?? {});
+  }
+
+  async getSessionUsage(params: {
+    key: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<Record<string, unknown>> {
+    return this.sendReq('sessions.usage', params as unknown as Record<string, unknown>);
+  }
+
   get isConnected(): boolean {
     return this.authenticated && this.ws?.readyState === WebSocket.OPEN;
   }

@@ -235,6 +235,18 @@
     "deny": "拒绝",
     "newRequest": "Agent 正在请求执行授权"
   },
+  "usage": {
+    "sessionCost": "当前会话",
+    "instanceCost": "实例总计（30 天）",
+    "inputTokens": "输入",
+    "outputTokens": "输出",
+    "cacheRead": "缓存读取",
+    "cacheWrite": "缓存写入",
+    "totalTokens": "总 Token",
+    "period": "最近 {{days}} 天",
+    "rateLimits": "速率限制",
+    "resetsAt": "{{time}} 重置"
+  },
   "pairing": {
     "title": "需要设备配对",
     "description": "这是首次连接此远程网关。网关管理员需要批准此设备后才能连接。",

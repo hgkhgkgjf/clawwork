@@ -35,9 +35,17 @@ export function formatFileSize(bytes: number): string {
 }
 
 export function formatTokenCount(tokens: number): string {
-  if (tokens < 1000) return String(tokens)
-  if (tokens < 100_000) return `${(tokens / 1000).toFixed(1)}k`
-  return `${(tokens / 1000).toFixed(0)}k`
+  if (tokens < 1_000) return String(tokens)
+  if (tokens < 1_000_000) return `${(tokens / 1_000).toFixed(tokens < 100_000 ? 1 : 0)}K`
+  if (tokens < 1_000_000_000) return `${(tokens / 1_000_000).toFixed(tokens < 100_000_000 ? 1 : 0)}M`
+  return `${(tokens / 1_000_000_000).toFixed(1)}B`
+}
+
+export function formatCost(usd: number): string {
+  if (usd === 0) return '$0';
+  if (usd < 0.01) return `$${usd.toFixed(4)}`;
+  if (usd < 1) return `$${usd.toFixed(3)}`;
+  return `$${usd.toFixed(2)}`;
 }
 
 export const isMac = navigator.platform.toUpperCase().includes('MAC')

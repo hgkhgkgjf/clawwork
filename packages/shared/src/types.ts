@@ -259,3 +259,96 @@ export interface ExecApprovalResolved {
   resolvedBy?: string | null;
   ts?: number | null;
 }
+
+// ------------------------------------------------------------
+// Usage & Cost (from Gateway usage.status / usage.cost)
+// ------------------------------------------------------------
+
+export type UsageProviderId =
+  | 'anthropic'
+  | 'github-copilot'
+  | 'google-gemini-cli'
+  | 'minimax'
+  | 'openai-codex'
+  | 'xiaomi'
+  | 'zai';
+
+export interface UsageWindow {
+  label: string;
+  usedPercent: number;
+  resetAt?: number;
+}
+
+export interface ProviderUsageSnapshot {
+  provider: UsageProviderId;
+  displayName: string;
+  windows: UsageWindow[];
+  plan?: string;
+  error?: string;
+}
+
+export interface UsageStatus {
+  updatedAt: number;
+  providers: ProviderUsageSnapshot[];
+}
+
+export interface CostUsageTotals {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  totalTokens: number;
+  totalCost: number;
+  inputCost: number;
+  outputCost: number;
+  cacheReadCost: number;
+  cacheWriteCost: number;
+  missingCostEntries: number;
+}
+
+export interface CostUsageDailyEntry extends CostUsageTotals {
+  date: string;
+}
+
+export interface CostUsageSummary {
+  updatedAt: number;
+  days: number;
+  daily: CostUsageDailyEntry[];
+  totals: CostUsageTotals;
+}
+
+export interface SessionCostSummary {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  totalTokens: number;
+  totalCost: number;
+  inputCost: number;
+  outputCost: number;
+  cacheReadCost: number;
+  cacheWriteCost: number;
+  missingCostEntries: number;
+  firstActivity?: number;
+  lastActivity?: number;
+  durationMs?: number;
+}
+
+export interface SessionUsageEntry {
+  key: string;
+  label?: string;
+  sessionId?: string;
+  updatedAt?: number;
+  agentId?: string;
+  model?: string;
+  modelProvider?: string;
+  usage: SessionCostSummary | null;
+}
+
+export interface SessionsUsageResult {
+  updatedAt: number;
+  startDate: string;
+  endDate: string;
+  sessions: SessionUsageEntry[];
+  totals: CostUsageTotals;
+}
