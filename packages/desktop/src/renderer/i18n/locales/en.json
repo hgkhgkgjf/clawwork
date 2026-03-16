@@ -156,7 +156,9 @@
     "thinkingLow": "Low",
     "thinkingMedium": "Medium",
     "thinkingHigh": "High",
-    "thinkingAdaptive": "Adaptive"
+    "thinkingAdaptive": "Adaptive",
+    "stopGenerating": "Stop generating (Esc)",
+    "abortFailed": "Failed to stop generation"
   },
   "voiceInput": {
     "tooltip": "Voice Input (Beta)",

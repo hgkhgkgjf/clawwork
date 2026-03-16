@@ -1,7 +1,7 @@
 import { useRef, useCallback, useState, useEffect, useMemo, type KeyboardEvent, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2, TerminalSquare } from 'lucide-react';
+import { Send, Square, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2, TerminalSquare } from 'lucide-react';
 import type { MessageImageAttachment } from '@clawwork/shared';
 import { toast } from 'sonner';
 import { cn, modKey } from '@/lib/utils';
@@ -183,6 +183,14 @@ export default function ChatInput() {
     s.tasks.find((t) => t.id === s.activeTaskId),
   );
 
+  const isProcessing = useMessageStore((s) =>
+    activeTask ? s.processingTasks.has(activeTask.id) : false,
+  );
+  const isStreaming = useMessageStore((s) =>
+    activeTask ? Boolean(s.streamingByTask[activeTask.id]) || Boolean(s.streamingThinkingByTask[activeTask.id]) : false,
+  );
+  const isGenerating = isProcessing || isStreaming;
+
   const addMessage = useMessageStore((s) => s.addMessage);
   const setProcessing = useMessageStore((s) => s.setProcessing);
   const updateTaskTitle = useTaskStore((s) => s.updateTaskTitle);
@@ -350,6 +358,19 @@ export default function ChatInput() {
     void handleSend();
   }, [activeTask, handleSend]);
 
+  const [aborting, setAborting] = useState(false);
+  const handleAbort = useCallback(async () => {
+    if (!activeTask || aborting) return;
+    setAborting(true);
+    try {
+      await window.clawwork.abortChat(activeTask.gatewayId, activeTask.sessionKey);
+    } catch {
+      toast.error(t('chatInput.abortFailed'));
+    } finally {
+      setTimeout(() => setAborting(false), 500);
+    }
+  }, [activeTask, aborting, t]);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       handleVoiceKeyDown(e);
@@ -407,6 +428,12 @@ export default function ChatInput() {
         }
       }
 
+      if (e.key === 'Escape' && isGenerating) {
+        e.preventDefault();
+        handleAbort();
+        return;
+      }
+
       // ── Send ──────────────────────────────────────────────────────────────────
       if (e.key === 'Enter') {
         const isCmdEnterMode = sendShortcut === 'cmdEnter';
@@ -418,7 +445,7 @@ export default function ChatInput() {
         }
       }
     },
-    [argPickerVisible, argPickerOptions, argPickerIndex, commitArgOption, closeArgPicker, slashMenuVisible, slashCommands, slashIndex, commitSlashCommand, handleSend, handleVoiceKeyDown, sendShortcut],
+    [argPickerVisible, argPickerOptions, argPickerIndex, commitArgOption, closeArgPicker, slashMenuVisible, slashCommands, slashIndex, commitSlashCommand, handleSend, handleAbort, isGenerating, handleVoiceKeyDown, sendShortcut],
   );
 
   const handleInput = useCallback(() => {
@@ -761,21 +788,52 @@ export default function ChatInput() {
                 {t('voiceInput.beta')}
               </span>
             </div>
-            <motion.div
-              whileHover={motionPresets.scale.whileHover}
-              whileTap={motionPresets.scale.whileTap}
-              transition={motionPresets.scale.transition}
-            >
-              <Button
-                variant="soft"
-                size="icon"
-                onClick={handleSend}
-                disabled={disabled}
-                className="rounded-xl"
-              >
-                <Send size={16} />
-              </Button>
-            </motion.div>
+            <AnimatePresence mode="wait">
+              {isGenerating ? (
+                <motion.div
+                  key="stop"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="danger"
+                        size="icon"
+                        onClick={handleAbort}
+                        disabled={aborting}
+                        className="rounded-xl"
+                      >
+                        <Square size={14} fill="currentColor" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t('chatInput.stopGenerating')}</TooltipContent>
+                  </Tooltip>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="send"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                  whileHover={motionPresets.scale.whileHover}
+                  whileTap={motionPresets.scale.whileTap}
+                >
+                  <Button
+                    variant="soft"
+                    size="icon"
+                    onClick={handleSend}
+                    disabled={disabled}
+                    className="rounded-xl"
+                  >
+                    <Send size={16} />
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
