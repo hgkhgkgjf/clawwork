@@ -13,12 +13,14 @@
  */
 
 export type SlashCommandCategory = 'session' | 'model' | 'access' | 'info';
+export type SlashPickerType = 'enum' | 'model';
 
 export interface SlashCommand {
   name: string;
   description: string;
   argHint?: string;
   category?: SlashCommandCategory;
+  pickerType?: SlashPickerType;
 }
 
 /**
@@ -36,7 +38,7 @@ export const STATIC_SLASH_COMMANDS: SlashCommand[] = [
   { name: 'session',  description: 'Switch session (or open picker)', argHint: '<key>',                             category: 'session' },
   { name: 'sessions', description: 'Open session picker',          argHint: undefined,                              category: 'session' },
 
-  { name: 'model',    description: 'Set model (or open picker)',   argHint: '<provider/model>',                     category: 'model' },
+  { name: 'model',    description: 'Set model (or open picker)',   argHint: '<provider/model>',                     category: 'model', pickerType: 'model' },
   { name: 'models',   description: 'Open model picker',            argHint: undefined,                              category: 'model' },
   { name: 'think',    description: 'Set thinking level',           argHint: 'off|minimal|low|medium|high|adaptive', category: 'model' },
   { name: 'fast',     description: 'Set fast mode',                argHint: 'status|on|off',                        category: 'model' },
@@ -112,4 +114,15 @@ export function parseSlashQuery(value: string, selectionStart: number): { active
   // If there's already a space in the command name, we're in arg territory
   if (afterSlash.includes(' ')) return { active: false };
   return { active: true, query: afterSlash };
+}
+
+export function getEnumOptions(cmd: SlashCommand): string[] | null {
+  if (!cmd.argHint) return null;
+  if (cmd.argHint.includes('<')) return null;
+  if (!cmd.argHint.includes('|')) return null;
+  return cmd.argHint.split('|').map((s) => s.trim()).filter(Boolean);
+}
+
+export function hasArgPicker(cmd: SlashCommand): boolean {
+  return cmd.pickerType === 'model' || getEnumOptions(cmd) !== null;
 }

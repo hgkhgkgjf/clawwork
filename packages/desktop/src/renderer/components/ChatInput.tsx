@@ -20,8 +20,10 @@ import { useMessageStore } from '../stores/messageStore';
 import { useUiStore } from '../stores/uiStore';
 import SlashCommandMenu from './SlashCommandMenu';
 import SlashCommandDashboard from './SlashCommandDashboard';
+import SlashArgPicker from './SlashArgPicker';
+import type { ArgOption } from './SlashArgPicker';
 import VoiceIntroDialog from './VoiceIntroDialog';
-import { filterSlashCommands, parseSlashQuery, type SlashCommand } from '@/lib/slash-commands';
+import { filterSlashCommands, parseSlashQuery, getEnumOptions, hasArgPicker, type SlashCommand } from '@/lib/slash-commands';
 
 interface PendingImage {
   file: File;
@@ -86,6 +88,11 @@ export default function ChatInput() {
   const slashCommands = filterSlashCommands(slashQuery);
   const [dashboardOpen, setDashboardOpen] = useState(false);
 
+  const [argPickerVisible, setArgPickerVisible] = useState(false);
+  const [argPickerCommand, setArgPickerCommand] = useState<SlashCommand | null>(null);
+  const [argPickerOptions, setArgPickerOptions] = useState<ArgOption[]>([]);
+  const [argPickerIndex, setArgPickerIndex] = useState(0);
+
   const sendShortcut = useUiStore((s) => s.sendShortcut);
   const mainView = useUiStore((s) => s.mainView);
   const settingsOpen = useUiStore((s) => s.settingsOpen);
@@ -105,19 +112,70 @@ export default function ChatInput() {
     }
   }, []);
 
-  /** Insert the selected command name into the textarea. */
+  const buildArgOptions = useCallback((cmd: SlashCommand): ArgOption[] => {
+    if (cmd.pickerType === 'model') {
+      const catalog = useUiStore.getState().modelCatalog;
+      return catalog.map((m) => ({
+        value: m.id,
+        label: m.name ?? m.id,
+        detail: m.provider,
+      }));
+    }
+    const opts = getEnumOptions(cmd);
+    if (opts) return opts.map((v) => ({ value: v, label: v }));
+    return [];
+  }, []);
+
   const commitSlashCommand = useCallback((cmd: SlashCommand) => {
     const ta = textareaRef.current;
     if (!ta) return;
+    setSlashMenuVisible(false);
+    setSlashQuery('');
+    setSlashIndex(0);
+
+    if (hasArgPicker(cmd)) {
+      const newValue = `/${cmd.name} `;
+      ta.value = newValue;
+      ta.style.height = 'auto';
+      ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+      ta.setSelectionRange(newValue.length, newValue.length);
+      ta.focus();
+      setArgPickerCommand(cmd);
+      setArgPickerOptions(buildArgOptions(cmd));
+      setArgPickerIndex(0);
+      setArgPickerVisible(true);
+      return;
+    }
+
     const newValue = `/${cmd.name} `;
     ta.value = newValue;
     ta.style.height = 'auto';
     ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
     ta.setSelectionRange(newValue.length, newValue.length);
     ta.focus();
-    setSlashMenuVisible(false);
-    setSlashQuery('');
-    setSlashIndex(0);
+  }, [buildArgOptions]);
+
+  const commitArgOption = useCallback((opt: ArgOption) => {
+    const ta = textareaRef.current;
+    if (!ta || !argPickerCommand) return;
+    const newValue = `/${argPickerCommand.name} ${opt.value}`;
+    ta.value = newValue;
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+    ta.setSelectionRange(newValue.length, newValue.length);
+    ta.focus();
+    setArgPickerVisible(false);
+    setArgPickerCommand(null);
+    setArgPickerOptions([]);
+    setArgPickerIndex(0);
+  }, [argPickerCommand]);
+
+  const closeArgPicker = useCallback(() => {
+    setArgPickerVisible(false);
+    setArgPickerCommand(null);
+    setArgPickerOptions([]);
+    setArgPickerIndex(0);
+    textareaRef.current?.focus();
   }, []);
 
   const activeTask = useTaskStore((s) =>
@@ -288,6 +346,31 @@ export default function ChatInput() {
         return;
       }
 
+      // ── Arg picker keyboard navigation ────────────────────────────────────────
+      if (argPickerVisible && argPickerOptions.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setArgPickerIndex((i) => (i + 1) % argPickerOptions.length);
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setArgPickerIndex((i) => (i - 1 + argPickerOptions.length) % argPickerOptions.length);
+          return;
+        }
+        if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+          e.preventDefault();
+          const opt = argPickerOptions[argPickerIndex];
+          if (opt) commitArgOption(opt);
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          closeArgPicker();
+          return;
+        }
+      }
+
       // ── Slash menu keyboard navigation ────────────────────────────────────────
       if (slashMenuVisible && slashCommands.length > 0) {
         if (e.key === 'ArrowDown') {
@@ -324,7 +407,7 @@ export default function ChatInput() {
         }
       }
     },
-    [slashMenuVisible, slashCommands, slashIndex, commitSlashCommand, handleSend, handleVoiceKeyDown, sendShortcut],
+    [argPickerVisible, argPickerOptions, argPickerIndex, commitArgOption, closeArgPicker, slashMenuVisible, slashCommands, slashIndex, commitSlashCommand, handleSend, handleVoiceKeyDown, sendShortcut],
   );
 
   const handleInput = useCallback(() => {
@@ -332,9 +415,9 @@ export default function ChatInput() {
     if (!textarea) return;
     textarea.style.height = 'auto';
     textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
-    // Re-evaluate slash menu on every input change
+    if (argPickerVisible) closeArgPicker();
     updateSlashMenu();
-  }, [updateSlashMenu]);
+  }, [updateSlashMenu, argPickerVisible, closeArgPicker]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
@@ -531,6 +614,17 @@ export default function ChatInput() {
               onSelect={commitSlashCommand}
               onHoverIndex={setSlashIndex}
               onClose={() => setSlashMenuVisible(false)}
+            />
+          )}
+
+          {argPickerVisible && argPickerCommand && (
+            <SlashArgPicker
+              commandName={argPickerCommand.name}
+              options={argPickerOptions}
+              selectedIndex={argPickerIndex}
+              onSelect={commitArgOption}
+              onHoverIndex={setArgPickerIndex}
+              onClose={closeArgPicker}
             />
           )}
 
