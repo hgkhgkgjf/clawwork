@@ -9,6 +9,13 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin({ exclude: ['@clawwork/shared'] })],
+    build: {
+      rollupOptions: {
+        output: {
+          format: 'cjs',
+        },
+      },
+    },
   },
   renderer: {
     resolve: {

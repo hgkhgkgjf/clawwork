@@ -62,7 +62,7 @@ function createWindow(): BrowserWindow {
     trafficLightPosition: { x: 16, y: 16 },
     backgroundColor: readConfig()?.theme === 'light' ? '#FAFAFA' : '#1C1C1C',
     webPreferences: {
-      preload: join(__dirname, '../preload/index.mjs'),
+      preload: join(__dirname, '../preload/index.cjs'),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
