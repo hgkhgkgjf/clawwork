@@ -37,11 +37,10 @@ Desktop → Gateway (:18789): `chat.send` sends user messages (`deliver: false` 
 ├── tsconfig.base.json        # ES2022, strict, bundler resolution
 ├── packages/
 │   ├── shared/               # @clawwork/shared — zero-dependency type bridge
-│   │   └── src/              # types.ts, protocol.ts, gateway-protocol.ts, constants.ts
-│   ├── channel-plugin/       # (excluded from workspace; code retained but not built)
+│   │   └── src/              # types.ts, protocol.ts, gateway-protocol.ts, constants.ts, debug.ts
 │   └── desktop/              # @clawwork/desktop — Electron app
 │       └── src/
-│           ├── main/         # Electron main process, ws/, ipc/, db/, artifact/, workspace/
+│           ├── main/         # Electron main process: ws/, ipc/, db/, artifact/, workspace/, debug/
 │           ├── preload/      # contextBridge, ClawWorkAPI interface
 │           └── renderer/     # React UI: components/, layouts/, stores/, hooks/, i18n/, styles/
 ```
@@ -74,12 +73,18 @@ Desktop → Gateway (:18789): `chat.send` sends user messages (`deliver: false` 
 ## Development Commands
 
 ```bash
-pnpm install                              # Install all dependencies
-pnpm dev                                  # Dev Desktop App (Electron hot-reload)
-pnpm typecheck                            # Type-check shared + desktop
-pnpm test                                 # Run all tests
-pnpm --filter @clawwork/desktop build     # Package
+pnpm install                                          # Install all dependencies
+pnpm dev                                              # Dev Desktop App (Electron hot-reload)
+pnpm typecheck                                        # Type-check shared + desktop
+pnpm lint                                             # Lint all packages
+pnpm test                                             # Run all tests
+pnpm --filter @clawwork/desktop build:mac:arm64       # Package macOS (arm64)
+pnpm --filter @clawwork/desktop build:mac:x64         # Package macOS (x64)
+pnpm --filter @clawwork/desktop build:mac:universal   # Package macOS (Universal Binary)
+pnpm --filter @clawwork/desktop build:win             # Package Windows
 ```
+
+Output: `packages/desktop/dist/ClawWork-<version>-<arch>.dmg`
 
 ## Key Protocols
 
@@ -142,10 +147,14 @@ See memory files for detailed phase history and technical pitfalls discovered du
 - TypeScript strict mode; `any` is not allowed
 - All colors via CSS Variables — no hardcoded hex values
 - Component files go in `layouts/` (layout components) or `components/` (general components), organized by feature
-- State management uses Zustand, one store per domain (`taskStore`, `messageStore`, `uiStore`)
+- State management uses Zustand, one store per domain (`taskStore`, `messageStore`, `uiStore`, `fileStore`, `approvalStore`)
 - WebSocket message types are defined in `@clawwork/shared`; desktop imports from there
+- PR title prefixes: `[Feat]`, `[Fix]`, `[UI]`, `[Docs]`, `[Refactor]`, `[Build]`, `[Chore]`
+- Never commit secrets or hardcoded credentials; use environment variables or config files excluded from VCS
 
 ## Design Documents
 
 - Full design doc: `docs/openclaw-desktop-design.md` (v0.2)
 - Design system spec: `design-system.md`
+- Development guide (debug observability, packaging): `DEVELOPMENT.md`
+- Contribution guide (PR conventions, commit prefixes): `CONTRIBUTING.md`
