@@ -97,7 +97,11 @@ export function registerDataHandlers(): void {
     try {
       const db = getDb();
       const rows = db.select().from(tasks).orderBy(desc(tasks.createdAt)).all();
-      return { ok: true, rows: rows.map((r) => ({ ...r, tags: JSON.parse(r.tags as string) })) };
+      return { ok: true, rows: rows.map((r) => {
+        let tags: string[] = [];
+        try { tags = JSON.parse(r.tags as string); } catch { }
+        return { ...r, tags };
+      }) };
     } catch (err) {
       console.error('[data] list-tasks failed:', err);
       return ipcError(err);

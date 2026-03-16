@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'fs';
+import { resolve, sep } from 'path';
 import { eq } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import { artifacts } from '../db/schema.js';
@@ -85,8 +85,11 @@ export function registerArtifactHandlers(): void {
     const workspacePath = getWorkspacePath();
     if (!workspacePath) return { ok: false, error: 'workspace not configured' };
     try {
-      const fullPath = join(workspacePath, params.localPath);
-      if (!existsSync(fullPath)) return { ok: false, error: 'file not found' };
+      const normalizedBase = resolve(workspacePath);
+      const fullPath = resolve(normalizedBase, params.localPath);
+      if (!fullPath.startsWith(normalizedBase + sep) && fullPath !== normalizedBase) {
+        return { ok: false, error: 'invalid path' };
+      }
       const encoding = isTextFile(params.localPath) ? 'utf-8' : 'base64';
       const content = readFileSync(fullPath, encoding);
       return { ok: true, result: { content, encoding } };
