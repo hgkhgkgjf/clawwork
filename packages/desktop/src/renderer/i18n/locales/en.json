@@ -209,5 +209,14 @@
     "allowAlways": "Always Allow",
     "deny": "Deny",
     "newRequest": "Agent is requesting execution approval"
+  },
+  "pairing": {
+    "title": "Device Pairing Required",
+    "description": "This is the first time connecting to this remote gateway. The gateway administrator needs to approve this device before it can connect.",
+    "instructions": "Open the OpenClaw Web UI, go to Devices, and approve the pending request for this device.",
+    "waiting": "Waiting for approval\u2026",
+    "retry": "Retry",
+    "approved": "Device approved! Connection established.",
+    "stillPending": "Not approved yet. Please check the Devices page in OpenClaw Web UI."
   }
 }

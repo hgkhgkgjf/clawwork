@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Moon, Sun, Globe, Star, Bug, Plus, Trash2, Pencil,
-  CheckCircle2, XCircle, Loader2, Server, Crown, RefreshCw,
+  CheckCircle2, XCircle, Loader2, Server, Crown, RefreshCw, ShieldCheck,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { cn, modKey } from '@/lib/utils'
 import { motion as motionPresets } from '@/styles/design-tokens'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useUiStore, type Language, type GatewayConnectionStatus, type SendShortcut } from '@/stores/uiStore'
 
@@ -166,6 +167,8 @@ export default function Settings({ onClose }: SettingsProps) {
   const [form, setForm] = useState<GatewayFormData>(EMPTY_FORM)
   const [testing, setTesting] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showPairingDialog, setShowPairingDialog] = useState(false)
+  const [pairingRetrying, setPairingRetrying] = useState(false)
 
   const loadGateways = useCallback(async () => {
     const settings = await window.clawwork.getSettings()
@@ -232,20 +235,36 @@ export default function Settings({ onClose }: SettingsProps) {
     setForm(EMPTY_FORM)
   }, [])
 
+  const testAuth = useCallback(() => ({ token: form.token || undefined, password: form.password || undefined }), [form.token, form.password])
+
   const handleTest = useCallback(async () => {
     try { new URL(form.url) } catch {
       toast.error(t('settings.invalidUrl'))
       return
     }
     setTesting(true)
-    const res = await window.clawwork.testGateway(form.url, { token: form.token || undefined, password: form.password || undefined })
+    const res = await window.clawwork.testGateway(form.url, testAuth())
     setTesting(false)
     if (res.ok) {
       toast.success(t('settings.testSuccess'))
+    } else if (res.pairingRequired) {
+      setShowPairingDialog(true)
     } else {
       toast.error(t('settings.testFailed'), { description: res.error })
     }
-  }, [form, t])
+  }, [form.url, testAuth, t])
+
+  const handlePairingRetry = useCallback(async () => {
+    setPairingRetrying(true)
+    const res = await window.clawwork.testGateway(form.url, testAuth())
+    setPairingRetrying(false)
+    if (res.ok) {
+      setShowPairingDialog(false)
+      toast.success(t('pairing.approved'))
+    } else {
+      toast.error(t('pairing.stillPending'))
+    }
+  }, [form.url, testAuth, t])
 
   const handleSave = useCallback(async () => {
     if (!form.name.trim()) { toast.error(t('settings.nameRequired')); return }
@@ -319,6 +338,7 @@ export default function Settings({ onClose }: SettingsProps) {
   )
 
   return (
+    <>
     <motion.div {...motionPresets.fadeIn} className="flex flex-col h-full">
       <header className="flex items-center justify-between h-12 px-4 border-b border-[var(--border)] flex-shrink-0">
         <h2 className="font-medium text-[var(--text-primary)]">{t('common.settings')}</h2>
@@ -600,5 +620,42 @@ export default function Settings({ onClose }: SettingsProps) {
         </section>
       </div>
     </motion.div>
+
+      <Dialog open={showPairingDialog} onOpenChange={setShowPairingDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={20} className="text-[var(--accent)]" />
+              <DialogTitle>{t('pairing.title')}</DialogTitle>
+            </div>
+            <DialogDescription className="pt-2">
+              {t('pairing.description')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className={cn(
+              'rounded-lg p-3 text-sm',
+              'bg-[var(--bg-tertiary)] border border-[var(--border)]',
+              'text-[var(--text-secondary)]',
+            )}>
+              {t('pairing.instructions')}
+            </div>
+            <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+              <Loader2 size={14} className="animate-spin" />
+              {t('pairing.waiting')}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowPairingDialog(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button variant="default" size="sm" onClick={handlePairingRetry} disabled={pairingRetrying} className="gap-1.5">
+                {pairingRetrying ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                {t('pairing.retry')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

@@ -227,7 +227,7 @@ export function useGatewayEventDispatcher(): void {
 
     window.clawwork.gatewayStatus().then((statusMap) => {
       for (const [gwId, info] of Object.entries(statusMap)) {
-        const status = info.connected ? 'connected' as const : 'disconnected' as const;
+        const status = info.connected ? 'connected' as const : info.error ? 'disconnected' as const : 'connecting' as const;
         setGatewayStatusByGateway(gwId, status);
         if (info.connected) {
           connectedGatewaysRef.current.add(gwId);
@@ -374,4 +374,3 @@ export async function fetchAgentsForGateway(gatewayId: string): Promise<void> {
     console.warn('[catalogs] Failed to fetch agents for gateway', gatewayId);
   }
 }
-

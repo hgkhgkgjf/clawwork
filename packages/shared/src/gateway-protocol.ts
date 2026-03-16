@@ -15,7 +15,7 @@ export interface GatewayResFrame {
   id: string;
   ok: boolean;
   payload?: Record<string, unknown>;
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; details?: Record<string, unknown> };
 }
 
 export interface GatewayEventFrame {

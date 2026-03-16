@@ -2,6 +2,7 @@ interface IpcResult {
   ok: boolean;
   result?: Record<string, unknown>;
   error?: string;
+  pairingRequired?: boolean;
 }
 
 interface ConnectionStatus {
@@ -50,7 +51,7 @@ export interface GatewayServerConfig {
 }
 
 interface GatewayStatusMap {
-  [gatewayId: string]: { connected: boolean; name: string };
+  [gatewayId: string]: { connected: boolean; name: string; error?: string };
 }
 
 interface GatewayListItem extends GatewayServerConfig {
