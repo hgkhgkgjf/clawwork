@@ -19,6 +19,7 @@ interface TaskState {
     inputTokens?: number;
     outputTokens?: number;
     contextTokens?: number;
+    updatedAt?: string;
   }) => void;
   hydrate: () => Promise<void>;
   adoptTasks: (discovered: {
@@ -83,9 +84,20 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   updateTaskMetadata: (id, meta) => {
+    const updatedAt = meta.updatedAt ?? new Date().toISOString();
     set((s) => ({
-      tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...meta } : t)),
+      tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...meta, updatedAt } : t)),
     }));
+    window.clawwork.persistTaskUpdate({
+      id,
+      model: meta.model,
+      modelProvider: meta.modelProvider,
+      thinkingLevel: meta.thinkingLevel,
+      inputTokens: meta.inputTokens,
+      outputTokens: meta.outputTokens,
+      contextTokens: meta.contextTokens,
+      updatedAt,
+    }).catch(() => {});
   },
 
   hydrate: async () => {

@@ -2,12 +2,19 @@ import type { Message, MessageRole, ToolCall } from '@clawwork/shared';
 import { useTaskStore } from '../stores/taskStore';
 import { useMessageStore } from '../stores/messageStore';
 
+const GATEWAY_INJECTED_MODEL = 'gateway-injected';
+
+function sanitizeModel(model?: string): string | undefined {
+  return model === GATEWAY_INJECTED_MODEL ? undefined : model;
+}
+
 /**
  * Load tasks and their messages from local SQLite.
  * Called once on mount for instant offline render.
  */
 export async function hydrateFromLocal(): Promise<void> {
   const { hydrate } = useTaskStore.getState();
+  const { bulkLoad } = useMessageStore.getState();
   await hydrate();
   const tasks = useTaskStore.getState().tasks;
   for (const t of tasks) {
@@ -23,7 +30,7 @@ export async function hydrateFromLocal(): Promise<void> {
           toolCalls: [],
           timestamp: r.timestamp,
         }));
-        useMessageStore.getState().bulkLoad(t.id, msgs);
+        bulkLoad(t.id, msgs);
       }
     } catch { /* skip failed loads */ }
   }
@@ -38,9 +45,11 @@ export async function syncFromGateway(): Promise<void> {
     const res = await window.clawwork.syncSessions();
     if (!res.ok || !res.discovered) return;
     const { adoptTasks, updateTaskMetadata } = useTaskStore.getState();
-    adoptTasks(res.discovered);
+    const { messagesByTask, bulkLoad } = useMessageStore.getState();
+    const discovered = res.discovered.map((d) => ({ ...d, model: sanitizeModel(d.model) }));
+    adoptTasks(discovered);
 
-    for (const d of res.discovered) {
+    for (const d of discovered) {
       // Update metadata for existing tasks (adoptTasks only creates new ones)
       updateTaskMetadata(d.taskId, {
         model: d.model,
@@ -51,8 +60,7 @@ export async function syncFromGateway(): Promise<void> {
         contextTokens: d.contextTokens,
       });
       if (d.messages.length === 0) continue;
-      const existing = useMessageStore.getState().messagesByTask[d.taskId];
-      if (existing && existing.length > 0) continue;
+      if (messagesByTask[d.taskId]?.length) continue;
       const msgs: Message[] = d.messages.map((m: {
         role: string;
         content: string;
@@ -75,7 +83,7 @@ export async function syncFromGateway(): Promise<void> {
         })),
         timestamp: m.timestamp,
       }));
-      useMessageStore.getState().bulkLoad(d.taskId, msgs);
+      bulkLoad(d.taskId, msgs);
       for (const msg of msgs) {
         window.clawwork.persistMessage({
           id: msg.id,

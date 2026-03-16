@@ -11,6 +11,8 @@ import { motion as motionPresets } from '@/styles/design-tokens'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import type { Task } from '@clawwork/shared'
 
+const GATEWAY_INJECTED_MODEL = 'gateway-injected'
+
 interface TaskItemProps {
   task: Task
   active: boolean
@@ -27,7 +29,8 @@ export default function TaskItem({ task, active, onContextMenu }: TaskItemProps)
   const gwInfo = useUiStore((s) => s.gatewayInfoMap[task.gatewayId])
   const multiGateway = useUiStore((s) => Object.keys(s.gatewayInfoMap).length > 1)
   const agentInfo = useUiStore((s) => task.agentId && task.agentId !== 'main' ? s.agentCatalog.find((a) => a.id === task.agentId) : undefined)
-  const modelLabel = task.model?.split('/').pop()
+  const modelLabel = task.model === GATEWAY_INJECTED_MODEL ? 'Default' : task.model?.split('/').pop()
+  const modelTooltip = task.model === GATEWAY_INJECTED_MODEL ? 'Default' : task.model
 
   const handleClick = (): void => {
     setActiveTask(task.id)
@@ -107,7 +110,7 @@ export default function TaskItem({ task, active, onContextMenu }: TaskItemProps)
                   {modelLabel}
                 </span>
               </TooltipTrigger>
-              <TooltipContent>{task.model}</TooltipContent>
+              <TooltipContent>{modelTooltip}</TooltipContent>
             </Tooltip>
           )}
           <p className="text-xs text-[var(--text-muted)]">

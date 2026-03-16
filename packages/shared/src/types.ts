@@ -155,6 +155,8 @@ export interface ModelCatalogEntry {
   id: string;
   name?: string;
   provider?: string;
+  reasoning?: boolean;
+  contextWindow?: number;
   [key: string]: unknown;
 }
 

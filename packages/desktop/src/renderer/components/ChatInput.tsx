@@ -33,6 +33,12 @@ interface PendingImage {
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_TYPES = 'image/png,image/jpeg,image/gif,image/webp';
+const GATEWAY_INJECTED_MODEL = 'gateway-injected';
+
+function getModelLabel(model: string | undefined, fallback?: string): string {
+  if (!model || model === GATEWAY_INJECTED_MODEL) return fallback ?? 'Default';
+  return model.split('/').pop() ?? model;
+}
 
 /** Validate and create blob preview URLs for image files. Returns accepted images. */
 function processImageFiles(files: File[]): PendingImage[] {
@@ -194,6 +200,7 @@ export default function ChatInput() {
   const addMessage = useMessageStore((s) => s.addMessage);
   const setProcessing = useMessageStore((s) => s.setProcessing);
   const updateTaskTitle = useTaskStore((s) => s.updateTaskTitle);
+  const updateTaskMetadata = useTaskStore((s) => s.updateTaskMetadata);
   const isOffline = useUiStore((s) => {
     if (!activeTask) return false;
     const gwStatus = s.gatewayStatusMap[activeTask.gatewayId];
@@ -201,15 +208,14 @@ export default function ChatInput() {
   });
 
   const modelCatalog = useUiStore((s) => s.modelCatalog);
-  const currentModel = activeTask?.model;
+  const currentModel = activeTask?.model === GATEWAY_INJECTED_MODEL ? undefined : activeTask?.model;
   const currentThinking = (activeTask?.thinkingLevel ?? 'off') as ThinkingLevel;
   const [whisperAvailable, setWhisperAvailable] = useState(false);
   useEffect(() => {
     window.clawwork.checkWhisper().then((r) => setWhisperAvailable(r.available));
   }, []);
-  const modelLabel = currentModel
-    ? modelCatalog.find((m) => m.id === currentModel)?.name ?? currentModel.split('/').pop() ?? currentModel
-    : modelCatalog[0]?.name ?? 'Default';
+  const currentModelEntry = currentModel ? modelCatalog.find((m) => m.id === currentModel) : undefined;
+  const modelLabel = currentModelEntry?.name ?? getModelLabel(currentModel, modelCatalog[0]?.name);
 
   const loadVoiceIntroSeen = useCallback(async () => {
     const settings = await window.clawwork.getSettings();
@@ -343,11 +349,15 @@ export default function ChatInput() {
   const handleModelQuickSend = useCallback((modelId: string) => {
     const ta = textareaRef.current;
     if (!ta || !activeTask) return;
+    updateTaskMetadata(activeTask.id, {
+      model: modelId,
+      modelProvider: modelCatalog.find((m) => m.id === modelId)?.provider,
+    });
     ta.value = `/model ${modelId}`;
     ta.style.height = 'auto';
     ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
     void handleSend();
-  }, [activeTask, handleSend]);
+  }, [activeTask, handleSend, modelCatalog, updateTaskMetadata]);
 
   const handleThinkingQuickSend = useCallback((level: ThinkingLevel) => {
     const ta = textareaRef.current;
@@ -569,6 +579,9 @@ export default function ChatInput() {
                 )}>
                   <Cpu size={12} className="flex-shrink-0" />
                   <span className="max-w-[100px] truncate">{modelLabel}</span>
+                  {currentModelEntry?.reasoning && (
+                    <span className="px-1 py-px rounded text-[9px] font-medium bg-[var(--accent)]/15 text-[var(--accent)]">R</span>
+                  )}
                   <ChevronDown size={10} className="opacity-50" />
                 </button>
               </DropdownMenuTrigger>
@@ -586,6 +599,9 @@ export default function ChatInput() {
                           className={cn(m.id === currentModel && 'font-medium text-[var(--accent)]')}
                         >
                           <span className="truncate">{m.name ?? m.id}</span>
+                          {m.reasoning && (
+                            <span className="px-1 py-px rounded text-[9px] font-medium bg-[var(--accent)]/15 text-[var(--accent)]">R</span>
+                          )}
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuSubContent>

@@ -223,13 +223,35 @@ export interface ClawWorkAPI {
 
   // Task persistence
   persistTask: (task: {
-    id: string; sessionKey: string; sessionId: string; title: string;
-    status: string; createdAt: string; updatedAt: string; tags: string[];
-    artifactDir: string; gatewayId: string;
+    id: string;
+    sessionKey: string;
+    sessionId: string;
+    title: string;
+    status: string;
+    model?: string;
+    modelProvider?: string;
+    thinkingLevel?: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    contextTokens?: number;
+    createdAt: string;
+    updatedAt: string;
+    tags: string[];
+    artifactDir: string;
+    gatewayId: string;
   }) => Promise<IpcResult>;
 
   persistTaskUpdate: (params: {
-    id: string; title?: string; status?: string; updatedAt: string;
+    id: string;
+    title?: string;
+    status?: string;
+    model?: string;
+    modelProvider?: string;
+    thinkingLevel?: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    contextTokens?: number;
+    updatedAt: string;
   }) => Promise<IpcResult>;
 
   persistMessage: (msg: {

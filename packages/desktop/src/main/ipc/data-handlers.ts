@@ -3,40 +3,29 @@ import { eq, desc } from 'drizzle-orm';
 import { getDb, isDbReady } from '../db/index.js';
 import { tasks, messages } from '../db/schema.js';
 
-interface CreateTaskParams {
-  id: string;
-  sessionKey: string;
-  sessionId: string;
-  title: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-  tags: string[];
-  artifactDir: string;
-  gatewayId: string;
-}
-
-interface UpdateTaskParams {
-  id: string;
-  title?: string;
-  status?: string;
-  updatedAt: string;
-}
-
-interface CreateMessageParams {
-  id: string;
-  taskId: string;
-  role: string;
-  content: string;
-  timestamp: string;
-}
-
 function ipcError(err: unknown): { ok: false; error: string } {
   return { ok: false, error: err instanceof Error ? err.message : 'unknown' };
 }
 
 export function registerDataHandlers(): void {
-  ipcMain.handle('data:create-task', (_event, task: CreateTaskParams) => {
+  ipcMain.handle('data:create-task', (_event, task: {
+    id: string;
+    sessionKey: string;
+    sessionId: string;
+    title: string;
+    status: string;
+    model?: string;
+    modelProvider?: string;
+    thinkingLevel?: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    contextTokens?: number;
+    createdAt: string;
+    updatedAt: string;
+    tags: string[];
+    artifactDir: string;
+    gatewayId: string;
+  }) => {
     if (!isDbReady()) return ipcError(new Error('database not ready'));
     try {
       const db = getDb();
@@ -46,6 +35,12 @@ export function registerDataHandlers(): void {
         sessionId: task.sessionId,
         title: task.title,
         status: task.status,
+        model: task.model,
+        modelProvider: task.modelProvider,
+        thinkingLevel: task.thinkingLevel,
+        inputTokens: task.inputTokens,
+        outputTokens: task.outputTokens,
+        contextTokens: task.contextTokens,
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
         tags: JSON.stringify(task.tags),
@@ -59,13 +54,30 @@ export function registerDataHandlers(): void {
     }
   });
 
-  ipcMain.handle('data:update-task', (_event, params: UpdateTaskParams) => {
+  ipcMain.handle('data:update-task', (_event, params: {
+    id: string;
+    title?: string;
+    status?: string;
+    model?: string;
+    modelProvider?: string;
+    thinkingLevel?: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    contextTokens?: number;
+    updatedAt: string;
+  }) => {
     if (!isDbReady()) return ipcError(new Error('database not ready'));
     try {
       const db = getDb();
-      const updates: Record<string, string> = { updatedAt: params.updatedAt };
+      const updates: Record<string, string | number | null | undefined> = { updatedAt: params.updatedAt };
       if (params.title !== undefined) updates.title = params.title;
       if (params.status !== undefined) updates.status = params.status;
+      if (params.model !== undefined) updates.model = params.model;
+      if (params.modelProvider !== undefined) updates.modelProvider = params.modelProvider;
+      if (params.thinkingLevel !== undefined) updates.thinkingLevel = params.thinkingLevel;
+      if (params.inputTokens !== undefined) updates.inputTokens = params.inputTokens;
+      if (params.outputTokens !== undefined) updates.outputTokens = params.outputTokens;
+      if (params.contextTokens !== undefined) updates.contextTokens = params.contextTokens;
       db.update(tasks).set(updates).where(eq(tasks.id, params.id)).run();
       return { ok: true };
     } catch (err) {
@@ -74,7 +86,13 @@ export function registerDataHandlers(): void {
     }
   });
 
-  ipcMain.handle('data:create-message', (_event, msg: CreateMessageParams) => {
+  ipcMain.handle('data:create-message', (_event, msg: {
+    id: string;
+    taskId: string;
+    role: string;
+    content: string;
+    timestamp: string;
+  }) => {
     if (!isDbReady()) return ipcError(new Error('database not ready'));
     try {
       const db = getDb();

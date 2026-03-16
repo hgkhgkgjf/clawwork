@@ -15,6 +15,12 @@ CREATE TABLE IF NOT EXISTS tasks (
   session_id TEXT NOT NULL DEFAULT '',
   title TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'active',
+  model TEXT,
+  model_provider TEXT,
+  thinking_level TEXT,
+  input_tokens INTEGER,
+  output_tokens INTEGER,
+  context_tokens INTEGER,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   tags TEXT NOT NULL DEFAULT '[]',
@@ -59,6 +65,20 @@ export function initDatabase(workspacePath: string): void {
     sqlite.exec("ALTER TABLE tasks ADD COLUMN gateway_id TEXT NOT NULL DEFAULT ''");
   } catch {
     // Column already exists, ignore
+  }
+
+  for (const sql of [
+    'ALTER TABLE tasks ADD COLUMN model TEXT',
+    'ALTER TABLE tasks ADD COLUMN model_provider TEXT',
+    'ALTER TABLE tasks ADD COLUMN thinking_level TEXT',
+    'ALTER TABLE tasks ADD COLUMN input_tokens INTEGER',
+    'ALTER TABLE tasks ADD COLUMN output_tokens INTEGER',
+    'ALTER TABLE tasks ADD COLUMN context_tokens INTEGER',
+  ]) {
+    try {
+      sqlite.exec(sql)
+    } catch {
+    }
   }
 
   initFTS(sqlite);

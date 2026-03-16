@@ -113,13 +113,35 @@ function buildApi(): ClawWorkAPI {
       ipcRenderer.invoke('search:global', query),
 
     persistTask: (task: {
-      id: string; sessionKey: string; sessionId: string; title: string;
-      status: string; createdAt: string; updatedAt: string; tags: string[];
-      artifactDir: string; gatewayId: string;
+      id: string;
+      sessionKey: string;
+      sessionId: string;
+      title: string;
+      status: string;
+      model?: string;
+      modelProvider?: string;
+      thinkingLevel?: string;
+      inputTokens?: number;
+      outputTokens?: number;
+      contextTokens?: number;
+      createdAt: string;
+      updatedAt: string;
+      tags: string[];
+      artifactDir: string;
+      gatewayId: string;
     }) => ipcRenderer.invoke('data:create-task', task),
 
     persistTaskUpdate: (params: {
-      id: string; title?: string; status?: string; updatedAt: string;
+      id: string;
+      title?: string;
+      status?: string;
+      model?: string;
+      modelProvider?: string;
+      thinkingLevel?: string;
+      inputTokens?: number;
+      outputTokens?: number;
+      contextTokens?: number;
+      updatedAt: string;
     }) => ipcRenderer.invoke('data:update-task', params),
 
     persistMessage: (msg: {
