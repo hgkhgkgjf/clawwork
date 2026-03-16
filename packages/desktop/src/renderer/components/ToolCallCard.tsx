@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, ChevronRight, Loader2, Check, X } from 'lucide-react';
 import type { ToolCall } from '@clawwork/shared';
@@ -25,12 +25,14 @@ function StatusIcon({ status }: { status: ToolCall['status'] }) {
   }
 }
 
-export default function ToolCallCard({ toolCall }: ToolCallCardProps) {
+const ToolCallCard = memo(function ToolCallCard({ toolCall }: ToolCallCardProps) {
   const [open, setOpen] = useState(false);
 
-  const duration = toolCall.completedAt
-    ? `${((new Date(toolCall.completedAt).getTime() - new Date(toolCall.startedAt).getTime()) / 1000).toFixed(1)}s`
-    : null;
+  const duration = useMemo(() => {
+    if (!toolCall.completedAt) return null;
+    const elapsed = new Date(toolCall.completedAt).getTime() - new Date(toolCall.startedAt).getTime();
+    return `${(elapsed / 1000).toFixed(1)}s`;
+  }, [toolCall.completedAt, toolCall.startedAt]);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -102,4 +104,6 @@ export default function ToolCallCard({ toolCall }: ToolCallCardProps) {
       </div>
     </Collapsible>
   );
-}
+});
+
+export default ToolCallCard;

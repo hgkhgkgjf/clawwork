@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Brain, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +11,7 @@ interface StreamingMessageProps {
   thinkingContent?: string;
 }
 
-export default function StreamingMessage({ content, thinkingContent }: StreamingMessageProps) {
+const StreamingMessage = memo(function StreamingMessage({ content, thinkingContent }: StreamingMessageProps) {
   const { t } = useTranslation();
   const [thinkingOpen, setThinkingOpen] = useState(true);
 
@@ -76,4 +76,6 @@ export default function StreamingMessage({ content, thinkingContent }: Streaming
       </div>
     </motion.div>
   );
-}
+});
+
+export default StreamingMessage;

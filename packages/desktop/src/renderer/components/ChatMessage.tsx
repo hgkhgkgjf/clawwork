@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Message } from '@clawwork/shared';
 import { Bot, User, Brain, ChevronDown } from 'lucide-react';
@@ -15,7 +15,7 @@ interface ChatMessageProps {
   onImageClick?: (src: string) => void;
 }
 
-export default function ChatMessage({ message, highlighted, onHighlightDone, onImageClick }: ChatMessageProps) {
+const ChatMessage = memo(function ChatMessage({ message, highlighted, onHighlightDone, onImageClick }: ChatMessageProps) {
   const { t } = useTranslation();
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
@@ -155,4 +155,6 @@ export default function ChatMessage({ message, highlighted, onHighlightDone, onI
       </div>
     </motion.div>
   );
-}
+});
+
+export default ChatMessage;

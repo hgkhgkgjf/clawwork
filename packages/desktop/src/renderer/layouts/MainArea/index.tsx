@@ -298,6 +298,7 @@ function ChatContent() {
   const stickToBottom = useRef(true)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
   const closeLightbox = useCallback(() => setLightboxSrc(null), [])
+  const handleHighlightDone = useCallback(() => setHighlightedMessage(null), [setHighlightedMessage])
 
   const handleScroll = useCallback(() => {
     const el = viewportRef.current
@@ -323,7 +324,7 @@ function ChatContent() {
               key={msg.id}
               message={msg}
               highlighted={msg.id === highlightedId}
-              onHighlightDone={() => setHighlightedMessage(null)}
+              onHighlightDone={handleHighlightDone}
               onImageClick={setLightboxSrc}
             />
           ))}
