@@ -327,6 +327,22 @@ export function registerWsHandlers(): void {
     await gw.abortChat(payload.sessionKey);
     return { ok: true };
   });
+
+  ipcMain.handle('ws:exec-approval-resolve', async (_event, payload: {
+    gatewayId: string;
+    id: string;
+    decision: string;
+  }) => {
+    const gw = getGatewayClient(payload.gatewayId);
+    if (!gw?.isConnected) return { ok: false, error: 'gateway not connected' };
+    try {
+      await gw.sendReq('exec.approval.resolve', { id: payload.id, decision: payload.decision });
+      return { ok: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'unknown error';
+      return { ok: false, error: msg };
+    }
+  });
 }
 
 function safeJsonParse(raw: string): Record<string, unknown> | undefined {

@@ -193,5 +193,19 @@
     "categoryModel": "模型与质量",
     "categoryAccess": "权限与安全",
     "categoryInfo": "信息与帮助"
+  },
+  "approval": {
+    "title": "需要执行授权",
+    "command": "命令",
+    "cwd": "工作目录",
+    "host": "主机",
+    "riskMedium": "中风险",
+    "riskHigh": "高风险",
+    "expiresIn": "{{seconds}} 秒后超时",
+    "queueMore": "还有 {{count}} 个等待",
+    "allowOnce": "允许一次",
+    "allowAlways": "始终允许",
+    "deny": "拒绝",
+    "newRequest": "Agent 正在请求执行授权"
   }
 }

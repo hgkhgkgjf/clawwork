@@ -6,6 +6,7 @@ import MainArea from './layouts/MainArea'
 import RightPanel from './layouts/RightPanel'
 import Setup from './layouts/Setup'
 import Settings from './layouts/Settings'
+import ApprovalDialog from './components/ApprovalDialog'
 import { useUiStore } from './stores/uiStore'
 import { useTaskStore } from './stores/taskStore'
 import { useGatewayEventDispatcher } from './hooks/useGatewayDispatcher'
@@ -147,6 +148,7 @@ export default function App() {
             },
           }}
         />
+        <ApprovalDialog />
       </div>
     </TooltipProvider>
   )

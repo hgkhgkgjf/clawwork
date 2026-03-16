@@ -193,5 +193,19 @@
     "categoryModel": "Model & Quality",
     "categoryAccess": "Access & Security",
     "categoryInfo": "Info & Help"
+  },
+  "approval": {
+    "title": "Execution Approval Required",
+    "command": "Command",
+    "cwd": "Working dir",
+    "host": "Host",
+    "riskMedium": "Medium Risk",
+    "riskHigh": "High Risk",
+    "expiresIn": "Expires in {{seconds}}s",
+    "queueMore": "{{count}} more pending",
+    "allowOnce": "Allow Once",
+    "allowAlways": "Always Allow",
+    "deny": "Deny",
+    "newRequest": "Agent is requesting execution approval"
   }
 }

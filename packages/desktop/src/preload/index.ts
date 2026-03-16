@@ -126,6 +126,9 @@ function buildApi(): ClawWorkAPI {
       id: string; taskId: string; role: string; content: string; timestamp: string;
     }) => ipcRenderer.invoke('data:create-message', msg),
 
+    resolveExecApproval: (gatewayId: string, id: string, decision: string) =>
+      ipcRenderer.invoke('ws:exec-approval-resolve', { gatewayId, id, decision }),
+
     removeAllListeners: (channel: string) => {
       ipcRenderer.removeAllListeners(channel);
     },

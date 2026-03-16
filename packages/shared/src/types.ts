@@ -173,3 +173,31 @@ export interface SessionPatchParams {
   responseUsage?: string | null;
   label?: string | null;
 }
+
+// ------------------------------------------------------------
+// Exec Approval (operator.approvals scope)
+// ------------------------------------------------------------
+
+export type ApprovalDecision = 'allow-once' | 'allow-always' | 'deny';
+
+export interface ExecApprovalRequest {
+  id: string;
+  request: {
+    command: string;
+    cwd?: string | null;
+    host?: string | null;
+    security?: string | null;
+    ask?: string | null;
+    agentId?: string | null;
+    sessionKey?: string | null;
+  };
+  createdAtMs: number;
+  expiresAtMs: number;
+}
+
+export interface ExecApprovalResolved {
+  id: string;
+  decision?: string | null;
+  resolvedBy?: string | null;
+  ts?: number | null;
+}

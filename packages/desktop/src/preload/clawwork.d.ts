@@ -235,6 +235,8 @@ export interface ClawWorkAPI {
   persistMessage: (msg: {
     id: string; taskId: string; role: string; content: string; timestamp: string;
   }) => Promise<IpcResult>;
+
+  resolveExecApproval: (gatewayId: string, id: string, decision: string) => Promise<IpcResult>;
 }
 
 declare global {

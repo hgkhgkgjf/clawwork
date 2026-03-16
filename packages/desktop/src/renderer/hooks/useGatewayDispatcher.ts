@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { parseTaskIdFromSessionKey } from '@clawwork/shared';
-import type { ToolCall, ToolCallStatus, ModelListResponse, AgentListResponse } from '@clawwork/shared';
+import type { ToolCall, ToolCallStatus, ModelListResponse, AgentListResponse, ExecApprovalRequest, ExecApprovalResolved } from '@clawwork/shared';
 import { toast } from 'sonner';
 import i18n from '../i18n';
 import { useMessageStore } from '../stores/messageStore';
 import { useTaskStore } from '../stores/taskStore';
 import { useUiStore } from '../stores/uiStore';
+import { useApprovalStore } from '../stores/approvalStore';
 import { hydrateFromLocal, syncFromGateway } from '../lib/session-sync';
 
 function debugEvent(event: string, data: Record<string, unknown>, extra?: { traceId?: string; feature?: string }): void {
@@ -86,6 +87,11 @@ export function useGatewayEventDispatcher(): void {
         handleChatEvent(data.payload as unknown as ChatEventPayload);
       } else if (data.event === 'agent') {
         handleAgentEvent(data.payload as unknown as AgentToolEvent);
+      } else if (data.event === 'exec.approval.requested') {
+        useApprovalStore.getState().addApproval(data.gatewayId, data.payload as unknown as ExecApprovalRequest);
+        toast.warning(i18n.t('approval.newRequest'));
+      } else if (data.event === 'exec.approval.resolved') {
+        useApprovalStore.getState().removeApproval((data.payload as unknown as ExecApprovalResolved).id);
       }
     };
 
@@ -119,7 +125,6 @@ export function useGatewayEventDispatcher(): void {
         if (thinking) {
           store.appendThinkingDelta(taskId, thinking);
         }
-        // Also process toolCall blocks from delta content
         const toolCalls = extractToolCalls(payload);
         for (const tc of toolCalls) {
           store.upsertToolCall(taskId, tc);
@@ -133,7 +138,6 @@ export function useGatewayEventDispatcher(): void {
           store.appendThinkingDelta(taskId, thinking);
         }
         debugEvent('renderer.chat.final.received', { taskId, sessionKey, chars: text.length });
-        // Extract and attach any toolCall blocks before finalizing
         const toolCalls = extractToolCalls(payload);
         for (const tc of toolCalls) {
           store.upsertToolCall(taskId, tc);
@@ -175,7 +179,6 @@ export function useGatewayEventDispatcher(): void {
         useUiStore.getState().markUnread(taskId);
       }
 
-      // Map Gateway phase to our ToolCallStatus
       let status: ToolCallStatus = 'running';
       if (data.phase === 'result') status = data.isError ? 'error' : 'done';
       else if (data.phase === 'error') status = 'error';
@@ -191,7 +194,6 @@ export function useGatewayEventDispatcher(): void {
       };
 
       const store = useMessageStore.getState();
-      // Preserve startedAt from existing entry if we're updating
       const existingMsgs = store.messagesByTask[taskId] ?? [];
       for (let i = existingMsgs.length - 1; i >= 0; i--) {
         const existing = existingMsgs[i].toolCalls.find((t) => t.id === tc.id);
@@ -214,7 +216,6 @@ export function useGatewayEventDispatcher(): void {
     };
   }, []);
 
-  // Hydrate tasks + messages from local SQLite on mount
   useEffect(() => {
     hydrateFromLocal();
   }, []);
@@ -224,7 +225,6 @@ export function useGatewayEventDispatcher(): void {
   useEffect(() => {
     const { setGatewayStatusByGateway, setDefaultGatewayId } = useUiStore.getState();
 
-    // Fetch initial status for all gateways
     window.clawwork.gatewayStatus().then((statusMap) => {
       for (const [gwId, info] of Object.entries(statusMap)) {
         const status = info.connected ? 'connected' as const : 'disconnected' as const;
@@ -233,17 +233,14 @@ export function useGatewayEventDispatcher(): void {
           connectedGatewaysRef.current.add(gwId);
         }
       }
-      // If any gateway connected and not yet synced, sync
       if (connectedGatewaysRef.current.size > 0 && !syncedRef.current) {
         syncedRef.current = true;
         syncFromGateway();
-        // Fetch catalogs from the first connected gateway
         const firstConnected = connectedGatewaysRef.current.values().next().value;
         if (firstConnected) fetchCatalogs(firstConnected);
       }
     });
 
-    // Set default gateway and cache gateway info from config
     window.clawwork.listGateways().then((gateways) => {
       const defaultGw = gateways.find((g) => g.isDefault);
       if (defaultGw) {
@@ -251,7 +248,6 @@ export function useGatewayEventDispatcher(): void {
       } else if (gateways.length > 0) {
         setDefaultGatewayId(gateways[0].id);
       }
-      // Cache gateway info for display (TaskItem badges, selectors)
       const infoMap: Record<string, { id: string; name: string; color?: string }> = {};
       for (const gw of gateways) {
         infoMap[gw.id] = { id: gw.id, name: gw.name, color: gw.color };
