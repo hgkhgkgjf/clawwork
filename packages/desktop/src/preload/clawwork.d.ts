@@ -176,6 +176,7 @@ export interface ClawWorkAPI {
   listModels: (gatewayId: string) => Promise<IpcResult>;
   listAgents: (gatewayId: string) => Promise<IpcResult>;
   patchSession: (gatewayId: string, sessionKey: string, patch: Record<string, unknown>) => Promise<IpcResult>;
+  getToolsCatalog: (gatewayId: string, agentId?: string) => Promise<IpcResult>;
 
   // Gateway status — returns map of all gateways
   gatewayStatus: () => Promise<GatewayStatusMap>;

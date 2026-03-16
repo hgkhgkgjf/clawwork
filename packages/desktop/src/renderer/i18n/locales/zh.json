@@ -113,7 +113,8 @@
     "noCommits": "暂无提交",
     "inputTokens": "输入",
     "outputTokens": "输出",
-    "contextUsage": "上下文"
+    "contextUsage": "上下文",
+    "toolCount": "{{count}} 个工具"
   },
   "fileBrowser": {
     "searchFiles": "搜索文件…",

@@ -113,7 +113,8 @@
     "noCommits": "No commits yet",
     "inputTokens": "Input",
     "outputTokens": "Output",
-    "contextUsage": "Context"
+    "contextUsage": "Context",
+    "toolCount": "{{count}} tools"
   },
   "fileBrowser": {
     "searchFiles": "Search files\u2026",

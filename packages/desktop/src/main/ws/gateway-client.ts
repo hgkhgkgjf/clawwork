@@ -557,6 +557,12 @@ export class GatewayClient {
     return this.sendReq('sessions.compact', params, this.sessionMeta(sessionKey));
   }
 
+  async getToolsCatalog(agentId?: string): Promise<Record<string, unknown>> {
+    const params: Record<string, unknown> = { includePlugins: true };
+    if (agentId) params.agentId = agentId;
+    return this.sendReq('tools.catalog', params);
+  }
+
   get isConnected(): boolean {
     return this.authenticated && this.ws?.readyState === WebSocket.OPEN;
   }

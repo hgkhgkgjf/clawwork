@@ -332,6 +332,21 @@ export function registerWsHandlers(): void {
     return { ok: true };
   });
 
+  ipcMain.handle('ws:tools-catalog', async (_event, payload: {
+    gatewayId: string;
+    agentId?: string;
+  }) => {
+    const gw = getGatewayClient(payload.gatewayId);
+    if (!gw?.isConnected) return { ok: false, error: 'gateway not connected' };
+    try {
+      const result = await gw.getToolsCatalog(payload.agentId);
+      return { ok: true, result };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'unknown error';
+      return { ok: false, error: msg };
+    }
+  });
+
   ipcMain.handle('ws:exec-approval-resolve', async (_event, payload: {
     gatewayId: string;
     id: string;

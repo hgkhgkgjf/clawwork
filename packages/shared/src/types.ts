@@ -164,6 +164,34 @@ export interface ModelListResponse {
   models: ModelCatalogEntry[];
 }
 
+// ------------------------------------------------------------
+// Gateway Tools Catalog
+// ------------------------------------------------------------
+
+export interface ToolEntry {
+  id: string;
+  label: string;
+  description: string;
+  source: 'core' | 'plugin';
+  pluginId?: string;
+  optional?: boolean;
+  defaultProfiles: string[];
+}
+
+export interface ToolGroup {
+  id: string;
+  label: string;
+  source: 'core' | 'plugin';
+  pluginId?: string;
+  tools: ToolEntry[];
+}
+
+export interface ToolsCatalog {
+  agentId: string;
+  profiles: Array<{ id: string; label: string }>;
+  groups: ToolGroup[];
+}
+
 export interface SessionPatchParams {
   sessionKey: string;
   thinkingLevel?: string | null;

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { parseTaskIdFromSessionKey } from '@clawwork/shared';
-import type { ToolCall, ToolCallStatus, ModelListResponse, AgentListResponse, ExecApprovalRequest, ExecApprovalResolved } from '@clawwork/shared';
+import type { ToolCall, ToolCallStatus, ModelListResponse, AgentListResponse, ToolsCatalog, ExecApprovalRequest, ExecApprovalResolved } from '@clawwork/shared';
 import { toast } from 'sonner';
 import i18n from '../i18n';
 import { useMessageStore } from '../stores/messageStore';
@@ -342,11 +342,12 @@ function autoTitleIfNeeded(taskId: string): void {
 }
 
 async function fetchCatalogs(gatewayId: string): Promise<void> {
-  const { setModelCatalogForGateway, setAgentCatalogForGateway } = useUiStore.getState();
+  const { setModelCatalogForGateway, setAgentCatalogForGateway, setToolsCatalogForGateway } = useUiStore.getState();
   try {
-    const [modelsRes, agentsRes] = await Promise.all([
+    const [modelsRes, agentsRes, toolsRes] = await Promise.all([
       window.clawwork.listModels(gatewayId),
       window.clawwork.listAgents(gatewayId),
+      window.clawwork.getToolsCatalog(gatewayId),
     ]);
     if (modelsRes.ok && modelsRes.result) {
       const data = modelsRes.result as unknown as ModelListResponse;
@@ -356,8 +357,12 @@ async function fetchCatalogs(gatewayId: string): Promise<void> {
       const data = agentsRes.result as unknown as AgentListResponse;
       if (data.agents) setAgentCatalogForGateway(gatewayId, data.agents, data.defaultId);
     }
+    if (toolsRes.ok && toolsRes.result) {
+      const data = toolsRes.result as unknown as ToolsCatalog;
+      if (data.groups) setToolsCatalogForGateway(gatewayId, data);
+    }
   } catch {
-    console.warn('[catalogs] Failed to fetch model/agent catalogs');
+    console.warn('[catalogs] Failed to fetch model/agent/tools catalogs');
   }
 }
 

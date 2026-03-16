@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AgentInfo, ModelCatalogEntry } from '@clawwork/shared';
+import type { AgentInfo, ModelCatalogEntry, ToolsCatalog } from '@clawwork/shared';
 import i18n from '../i18n';
 
 type MainView = 'chat' | 'files' | 'archived';
@@ -63,6 +63,10 @@ interface UiState {
   /** Per-gateway agent catalogs */
   agentCatalogByGateway: Record<string, { agents: AgentInfo[]; defaultId: string }>;
   setAgentCatalogForGateway: (gatewayId: string, agents: AgentInfo[], defaultId: string) => void;
+
+  /** Per-gateway tools catalogs */
+  toolsCatalogByGateway: Record<string, ToolsCatalog>;
+  setToolsCatalogForGateway: (gatewayId: string, catalog: ToolsCatalog) => void;
 
   sendShortcut: SendShortcut;
   setSendShortcut: (shortcut: SendShortcut) => void;
@@ -140,6 +144,15 @@ export const useUiStore = create<UiState>((set, get) => ({
       agentCatalogByGateway: {
         ...s.agentCatalogByGateway,
         [gatewayId]: { agents, defaultId },
+      },
+    })),
+
+  toolsCatalogByGateway: {},
+  setToolsCatalogForGateway: (gatewayId, catalog) =>
+    set((s) => ({
+      toolsCatalogByGateway: {
+        ...s.toolsCatalogByGateway,
+        [gatewayId]: catalog,
       },
     })),
 

@@ -2,7 +2,7 @@ import { useRef, useCallback, useState, useEffect, useMemo, type KeyboardEvent, 
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Square, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2, TerminalSquare, Minimize2, RotateCcw } from 'lucide-react';
-import type { MessageImageAttachment, ModelCatalogEntry } from '@clawwork/shared';
+import type { MessageImageAttachment, ModelCatalogEntry, ToolEntry } from '@clawwork/shared';
 import { toast } from 'sonner';
 import { cn, modKey } from '@/lib/utils';
 import { motion as motionPresets } from '@/styles/design-tokens';
@@ -21,6 +21,7 @@ import { useMessageStore } from '../stores/messageStore';
 import { useUiStore } from '../stores/uiStore';
 import SlashCommandMenu from './SlashCommandMenu';
 import SlashCommandDashboard from './SlashCommandDashboard';
+import ToolsCatalog from './ToolsCatalog';
 import SlashArgPicker from './SlashArgPicker';
 import type { ArgOption } from './SlashArgPicker';
 import VoiceIntroDialog from './VoiceIntroDialog';
@@ -218,6 +219,7 @@ export default function ChatInput() {
 
   const taskGwId = activeTask?.gatewayId ?? pendingNewTask?.gatewayId;
   const modelCatalog = useUiStore((s) => (taskGwId ? s.modelCatalogByGateway[taskGwId] : undefined) ?? EMPTY_MODELS_CATALOG);
+  const toolsCatalog = useUiStore((s) => taskGwId ? s.toolsCatalogByGateway[taskGwId] : undefined);
   const currentModel = activeTask?.model === GATEWAY_INJECTED_MODEL ? undefined : activeTask?.model;
   const currentThinking = (activeTask?.thinkingLevel ?? 'off') as ThinkingLevel;
   const [whisperAvailable, setWhisperAvailable] = useState(false);
@@ -413,6 +415,22 @@ export default function ChatInput() {
       setTimeout(() => setAborting(false), 500);
     }
   }, [activeTask, aborting, t]);
+
+  const handleToolSelect = useCallback((tool: ToolEntry) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const insert = `${tool.label} `;
+    const pos = ta.selectionStart ?? ta.value.length;
+    const before = ta.value.slice(0, pos);
+    const after = ta.value.slice(pos);
+    const needSpace = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n');
+    ta.value = before + (needSpace ? ' ' : '') + insert + after;
+    const newPos = pos + (needSpace ? 1 : 0) + insert.length;
+    ta.setSelectionRange(newPos, newPos);
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+    ta.focus();
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -692,6 +710,13 @@ export default function ChatInput() {
               </TooltipTrigger>
               <TooltipContent side="top">{t('slashDashboard.tooltip')}</TooltipContent>
             </Tooltip>
+
+            {toolsCatalog?.groups && toolsCatalog.groups.length > 0 && (
+              <>
+                <DropdownMenuSeparator className="h-4 w-px mx-0.5" />
+                <ToolsCatalog groups={toolsCatalog.groups} onToolSelect={handleToolSelect} />
+              </>
+            )}
 
             <div className="ml-auto flex items-center gap-0.5">
               <Tooltip>
