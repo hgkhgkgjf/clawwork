@@ -209,5 +209,14 @@
     "allowAlways": "始终允许",
     "deny": "拒绝",
     "newRequest": "Agent 正在请求执行授权"
+  },
+  "pairing": {
+    "title": "需要设备配对",
+    "description": "这是首次连接此远程网关。网关管理员需要批准此设备后才能连接。",
+    "instructions": "请打开 OpenClaw Web UI，进入「设备」页面，批准此设备的待审请求。",
+    "waiting": "等待批准中…",
+    "retry": "重试",
+    "approved": "设备已批准！连接成功。",
+    "stillPending": "尚未批准。请检查 OpenClaw Web UI 的设备页面。"
   }
 }

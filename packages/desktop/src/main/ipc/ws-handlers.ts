@@ -138,9 +138,13 @@ export function registerWsHandlers(): void {
 
   ipcMain.handle('ws:gateway-status', () => {
     const clients = getAllGatewayClients();
-    const statusMap: Record<string, { connected: boolean; name: string }> = {};
+    const statusMap: Record<string, { connected: boolean; name: string; error?: string }> = {};
     for (const [id, client] of clients) {
-      statusMap[id] = { connected: client.isConnected, name: client.name };
+      statusMap[id] = {
+        connected: client.isConnected,
+        name: client.name,
+        error: client.lastConnectionError ?? undefined,
+      };
     }
     return statusMap;
   });

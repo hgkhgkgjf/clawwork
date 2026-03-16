@@ -29,6 +29,7 @@ import {
 import { getDebugLogger } from '../debug/index.js';
 
 const WS_CLOSE_POLICY_VIOLATION = 1008;
+const WS_HANDSHAKE_TIMEOUT_MS = 10_000;
 
 type PendingReq = {
   resolve: (payload: Record<string, unknown>) => void;
@@ -59,6 +60,8 @@ export class GatewayClient {
   private gatewayName: string;
   private connectNonce: string | null = null;
   private deviceIdentity: DeviceIdentity;
+  private lastError: string | null = null;
+  private lastErrorCode: string | null = null;
 
   constructor(config: GatewayClientConfig, opts?: { noReconnect?: boolean }) {
     this.gatewayId = config.id;
@@ -93,6 +96,7 @@ export class GatewayClient {
   connect(): void {
     if (this.destroyed) return;
     this.cleanup();
+    this.lastError = null;
 
     getDebugLogger().info({
       domain: 'gateway',
@@ -101,7 +105,7 @@ export class GatewayClient {
       attempt: this.reconnectAttempts + 1,
       data: { wsUrl: this.wsUrl },
     });
-    this.ws = new WebSocket(this.wsUrl);
+    this.ws = new WebSocket(this.wsUrl, { handshakeTimeout: WS_HANDSHAKE_TIMEOUT_MS });
 
     this.ws.on('open', () => {
       getDebugLogger().info({
@@ -118,6 +122,7 @@ export class GatewayClient {
 
     this.ws.on('close', (code, reason) => {
       const reasonStr = reason.toString();
+      const error = this.lastError ?? (code === WS_CLOSE_POLICY_VIOLATION ? reasonStr || 'policy violation' : undefined);
       getDebugLogger().warn({
         domain: 'gateway',
         event: 'gateway.ws.close',
@@ -134,7 +139,7 @@ export class GatewayClient {
         sendToWindow(this.mainWindow, 'gateway-status', {
           gatewayId: this.gatewayId,
           connected: false,
-          ...(code === WS_CLOSE_POLICY_VIOLATION ? { error: reasonStr || 'policy violation' } : {}),
+          error,
         });
       }
       // Don't retry when server explicitly rejects (pairing required, auth denied)
@@ -143,12 +148,20 @@ export class GatewayClient {
     });
 
     this.ws.on('error', (err) => {
+      this.lastError = err.message;
       getDebugLogger().error({
         domain: 'gateway',
         event: 'gateway.ws.error',
         gatewayId: this.gatewayId,
         error: { name: err.name, message: err.message, stack: err.stack },
       });
+      if (this.mainWindow) {
+        sendToWindow(this.mainWindow, 'gateway-status', {
+          gatewayId: this.gatewayId,
+          connected: false,
+          error: err.message,
+        });
+      }
     });
   }
 
@@ -298,6 +311,8 @@ export class GatewayClient {
           });
           this.authenticated = true;
           this.reconnectAttempts = 0;
+          this.lastError = null;
+          this.lastErrorCode = null;
           this.storeDeviceTokenFromPayload(payload);
           this.startHeartbeat();
           if (this.mainWindow) {
@@ -316,13 +331,16 @@ export class GatewayClient {
           });
         }
       })
-      .catch((err: Error) => {
+      .catch((err: Error & { details?: Record<string, unknown> }) => {
+        this.lastError = err.message;
+        this.lastErrorCode = (err.details?.code as string) ?? null;
         getDebugLogger().error({
           domain: 'gateway',
           event: 'gateway.connect.failed',
           gatewayId: this.gatewayId,
           requestId: 'connect-handshake',
           error: { name: err.name, message: err.message, stack: err.stack },
+          data: { errorCode: this.lastErrorCode },
         });
         this.ws?.close(WS_CLOSE_POLICY_VIOLATION, 'auth failed');
       });
@@ -398,7 +416,11 @@ export class GatewayClient {
         error: { message: errMsg, code: frame.error?.code },
         data: { method: pending.method },
       });
-      pending.reject(new Error(errMsg));
+      const err = new Error(errMsg) as Error & { details?: Record<string, unknown> };
+      if (frame.error?.details) {
+        err.details = frame.error.details;
+      }
+      pending.reject(err);
     }
   }
 
@@ -529,6 +551,14 @@ export class GatewayClient {
     return this.authenticated && this.ws?.readyState === WebSocket.OPEN;
   }
 
+  get lastConnectionError(): string | null {
+    return this.lastError;
+  }
+
+  get lastConnectionErrorCode(): string | null {
+    return this.lastErrorCode;
+  }
+
   private startHeartbeat(): void {
     this.stopHeartbeat();
     getDebugLogger().info({
@@ -617,12 +647,12 @@ export class GatewayClient {
     }
     if (this.ws) {
       this.ws.removeAllListeners();
+      this.ws.on('error', () => {});
       try {
         if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
           this.ws.close();
         }
       } catch {
-        // ws lib may throw when closing a CONNECTING socket before the HTTP upgrade completes
       }
       this.ws = null;
     }

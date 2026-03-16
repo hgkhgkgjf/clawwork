@@ -84,25 +84,21 @@ export function registerSettingsHandlers(): void {
       { noReconnect: true },
     );
     try {
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          testClient.destroy();
-          reject(new Error('timeout'));
-        }, 10000);
-        // Poll — isConnected flips to true after auth handshake completes
-        const checkInterval = setInterval(() => {
-          if (testClient.isConnected) {
-            clearTimeout(timeout);
-            clearInterval(checkInterval);
-            resolve();
-          }
-        }, 300);
-      });
+      testClient.connect();
+      const deadline = Date.now() + 10000;
+      while (Date.now() < deadline) {
+        if (testClient.isConnected) return { ok: true };
+        if (testClient.lastConnectionError) break;
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      const errorCode = testClient.lastConnectionErrorCode;
+      const msg = testClient.lastConnectionError ?? 'timeout';
+      if (errorCode === 'PAIRING_REQUIRED') {
+        return { ok: false, error: msg, pairingRequired: true };
+      }
+      return { ok: false, error: msg };
+    } finally {
       testClient.destroy();
-      return { ok: true };
-    } catch (e) {
-      testClient.destroy();
-      return { ok: false, error: e instanceof Error ? e.message : 'connection failed' };
     }
   });
 }
