@@ -13,8 +13,14 @@ import { registerDataHandlers } from './ipc/data-handlers.js';
 import { registerUpdateHandlers } from './ipc/update-handlers.js';
 import { registerDebugHandlers } from './ipc/debug-handlers.js';
 import { configureVoicePermissionHandlers, registerVoiceHandlers } from './ipc/voice-handlers.js';
+import { registerTrayHandlers } from './ipc/tray-handlers.js';
+import { registerQuickLaunchHandlers } from './ipc/quick-launch-handlers.js';
+import { initTray, destroyTray, updateTrayWindow } from './tray.js';
+import { initQuickLaunch, destroyQuickLaunch, updateQuickLaunchMainWindow } from './quick-launch.js';
 import { getWorkspacePath, readConfig } from './workspace/config.js';
 import { initDatabase, closeDatabase } from './db/index.js';
+
+let isQuitting = false;
 
 // Prevent EPIPE crashes when stdout/stderr pipe is broken (common in dev mode)
 process.stdout?.on?.('error', () => {});
@@ -106,6 +112,8 @@ app.whenReady().then(() => {
   registerDebugHandlers();
   registerVoiceHandlers();
   configureVoicePermissionHandlers();
+  registerTrayHandlers();
+  registerQuickLaunchHandlers();
 
   const wsPath = getWorkspacePath();
   if (wsPath) {
@@ -131,11 +139,25 @@ app.whenReady().then(() => {
   const mainWindow = createWindow();
   initAllGateways(mainWindow);
   setupDevScreenshot(mainWindow);
+  initTray(mainWindow);
+  initQuickLaunch(mainWindow);
+
+  mainWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (mainWindow && !mainWindow.isVisible()) {
+      mainWindow.show();
+      mainWindow.focus();
+    } else if (BrowserWindow.getAllWindows().length === 0) {
       const win = createWindow();
       rebindAllWindows(win);
+      updateTrayWindow(win);
+      updateQuickLaunchMainWindow(win);
     }
   });
 });
@@ -147,8 +169,11 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
   getDebugLogger().info({ domain: 'app', event: 'app.before-quit' });
   globalShortcut.unregisterAll();
   destroyAllGateways();
+  destroyTray();
+  destroyQuickLaunch();
   closeDatabase();
 });

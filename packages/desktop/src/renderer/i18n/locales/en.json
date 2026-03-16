@@ -73,7 +73,19 @@
     "alreadyLatest": "You are on the latest version",
     "updateCheckFailed": "Failed to check for updates",
     "newVersionAvailable": "New version {{version}} available",
-    "homebrewUpgrade": "If installed via Homebrew, run:"
+    "homebrewUpgrade": "If installed via Homebrew, run:",
+    "system": "System",
+    "trayIcon": "Menu Bar Icon",
+    "trayIconDesc": "Show status icon in the menu bar",
+    "trayEnabled": "Menu bar icon enabled",
+    "trayDisabled": "Menu bar icon disabled",
+    "quickLaunch": "Quick Launch",
+    "quickLaunchDesc": "Global shortcut to start a new task from anywhere",
+    "quickLaunchEnabled": "Quick Launch enabled",
+    "quickLaunchDisabled": "Quick Launch disabled",
+    "quickLaunchShortcut": "Shortcut",
+    "quickLaunchShortcutConflict": "Shortcut may conflict with another app",
+    "pressShortcut": "Press shortcut..."
   },
   "setup": {
     "welcome": "Welcome to ClawWork",

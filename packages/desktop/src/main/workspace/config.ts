@@ -19,6 +19,11 @@ export interface VoiceInputConfig {
   introSeen?: boolean;
 }
 
+export interface QuickLaunchConfig {
+  enabled: boolean;
+  shortcut: string;
+}
+
 export interface AppConfig {
   workspacePath: string;
   theme?: 'dark' | 'light';
@@ -31,6 +36,8 @@ export interface AppConfig {
   password?: string;
   tlsFingerprint?: string;
   voiceInput?: VoiceInputConfig;
+  quickLaunch?: QuickLaunchConfig;
+  trayEnabled?: boolean;
 }
 
 function configFilePath(): string {

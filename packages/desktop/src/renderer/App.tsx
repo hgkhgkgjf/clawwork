@@ -9,9 +9,11 @@ import Settings from './layouts/Settings'
 import ApprovalDialog from './components/ApprovalDialog'
 import { useUiStore } from './stores/uiStore'
 import { useTaskStore } from './stores/taskStore'
+import { useMessageStore } from './stores/messageStore'
 import { useGatewayEventDispatcher } from './hooks/useGatewayDispatcher'
 import { useTheme } from './hooks/useTheme'
 import { useUpdateCheck } from './hooks/useUpdateCheck'
+import { useTraySync } from './hooks/useTraySync'
 import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
@@ -28,10 +30,16 @@ export default function App() {
   const setMainView = useUiStore((s) => s.setMainView)
   const focusSearch = useUiStore((s) => s.focusSearch)
   const startNewTask = useTaskStore((s) => s.startNewTask)
+  const createTask = useTaskStore((s) => s.createTask)
+  const setActiveTask = useTaskStore((s) => s.setActiveTask)
+  const updateTaskTitle = useTaskStore((s) => s.updateTaskTitle)
+  const addMessage = useMessageStore((s) => s.addMessage)
+  const setProcessing = useMessageStore((s) => s.setProcessing)
 
   useGatewayEventDispatcher()
   useTheme()
   useUpdateCheck()
+  useTraySync()
 
   useEffect(() => {
     window.clawwork.isWorkspaceConfigured().then((configured) => {
@@ -78,6 +86,35 @@ export default function App() {
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [handleGlobalKeyDown])
+
+  useEffect(() => {
+    return window.clawwork.onQuickLaunchSubmit((message) => {
+      const task = createTask()
+      const title = message.slice(0, 30).replace(/\n/g, ' ').trim()
+      updateTaskTitle(task.id, title + (message.length > 30 ? '\u2026' : ''))
+      addMessage(task.id, 'user', message)
+      setProcessing(task.id, true)
+      window.clawwork.sendMessage(task.gatewayId, task.sessionKey, message).then((result) => {
+        if (result && !result.ok) {
+          setProcessing(task.id, false)
+        }
+      }).catch(() => {
+        setProcessing(task.id, false)
+      })
+    })
+  }, [createTask, updateTaskTitle, addMessage, setProcessing])
+
+  useEffect(() => {
+    const cleanupNav = window.clawwork.onTrayNavigateTask((taskId) => {
+      setActiveTask(taskId)
+      setSettingsOpen(false)
+      setMainView('chat')
+    })
+    const cleanupSettings = window.clawwork.onTrayOpenSettings(() => {
+      setSettingsOpen(true)
+    })
+    return () => { cleanupNav(); cleanupSettings() }
+  }, [setActiveTask, setSettingsOpen, setMainView])
 
   if (needsSetup) {
     return (

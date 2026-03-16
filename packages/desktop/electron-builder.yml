@@ -3,6 +3,10 @@ productName: ClawWork
 directories:
   buildResources: build
   output: dist
+extraResources:
+  - from: build/icon.png
+    to: icon.png
+
 files:
   - "out/**/*"
   - "node_modules/**/*"

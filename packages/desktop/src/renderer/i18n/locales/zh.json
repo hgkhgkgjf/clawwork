@@ -73,7 +73,19 @@
     "alreadyLatest": "已是最新版本",
     "updateCheckFailed": "检查更新失败",
     "newVersionAvailable": "发现新版本 {{version}}",
-    "homebrewUpgrade": "如通过 Homebrew 安装，请执行："
+    "homebrewUpgrade": "如通过 Homebrew 安装，请执行：",
+    "system": "系统",
+    "trayIcon": "菜单栏图标",
+    "trayIconDesc": "在菜单栏显示状态图标",
+    "trayEnabled": "菜单栏图标已开启",
+    "trayDisabled": "菜单栏图标已关闭",
+    "quickLaunch": "快速启动",
+    "quickLaunchDesc": "全局快捷键随时发起新任务",
+    "quickLaunchEnabled": "快速启动已开启",
+    "quickLaunchDisabled": "快速启动已关闭",
+    "quickLaunchShortcut": "快捷键",
+    "quickLaunchShortcutConflict": "快捷键可能与其他应用冲突",
+    "pressShortcut": "按下快捷键..."
   },
   "setup": {
     "welcome": "欢迎使用 ClawWork",

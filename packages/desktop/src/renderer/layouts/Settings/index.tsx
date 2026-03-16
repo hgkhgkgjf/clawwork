@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Moon, Sun, Globe, Star, Bug, Plus, Trash2, Pencil,
-  CheckCircle2, XCircle, Loader2, Server, Crown, RefreshCw, ShieldCheck,
+  CheckCircle2, XCircle, Loader2, Server, Crown, RefreshCw, ShieldCheck, Zap, MonitorDot,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -47,6 +47,26 @@ const LANGUAGES: { value: Language; label: string }[] = [
 ]
 
 const EMPTY_FORM: GatewayFormData = { name: '', url: 'ws://127.0.0.1:18789', token: '', password: '' }
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'relative inline-flex w-10 h-[22px] rounded-full transition-colors flex-shrink-0 cursor-pointer',
+        checked ? 'bg-[var(--accent)]' : 'bg-[var(--bg-tertiary)] border border-[var(--border)]',
+      )}
+    >
+      <span className={cn(
+        'absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-white shadow-sm',
+        'transition-transform duration-150 ease-out',
+        checked && 'translate-x-[18px]',
+      )} />
+    </button>
+  )
+}
 
 const STATUS_ICON: Record<GatewayConnectionStatus, { icon: typeof CheckCircle2; color: string }> = {
   connected: { icon: CheckCircle2, color: 'text-[var(--accent)]' },
@@ -169,6 +189,10 @@ export default function Settings({ onClose }: SettingsProps) {
   const [saving, setSaving] = useState(false)
   const [showPairingDialog, setShowPairingDialog] = useState(false)
   const [pairingRetrying, setPairingRetrying] = useState(false)
+  const [quickLaunchEnabled, setQuickLaunchEnabled] = useState(false)
+  const [quickLaunchShortcut, setQuickLaunchShortcut] = useState('Alt+Space')
+  const [recordingShortcut, setRecordingShortcut] = useState(false)
+  const [trayEnabled, setTrayEnabled] = useState(true)
 
   const loadGateways = useCallback(async () => {
     const settings = await window.clawwork.getSettings()
@@ -186,6 +210,66 @@ export default function Settings({ onClose }: SettingsProps) {
   }, [t, setGatewayInfoMap])
 
   useEffect(() => { loadGateways() }, [loadGateways])
+
+  useEffect(() => {
+    window.clawwork.getQuickLaunchConfig().then((config) => {
+      setQuickLaunchEnabled(config.enabled)
+      setQuickLaunchShortcut(config.shortcut)
+    })
+    window.clawwork.getTrayEnabled().then(setTrayEnabled)
+  }, [])
+
+  const handleQuickLaunchToggle = useCallback(async (enabled: boolean) => {
+    const success = await window.clawwork.updateQuickLaunchConfig(enabled, quickLaunchShortcut)
+    if (success) {
+      setQuickLaunchEnabled(enabled)
+      toast.success(enabled ? t('settings.quickLaunchEnabled') : t('settings.quickLaunchDisabled'))
+    } else {
+      toast.error(t('settings.quickLaunchShortcutConflict'))
+    }
+  }, [quickLaunchShortcut, t])
+
+  const handleShortcutRecord = useCallback((e: React.KeyboardEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.key === 'Escape') {
+      setRecordingShortcut(false)
+      return
+    }
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
+
+    const parts: string[] = []
+    if (e.metaKey || e.ctrlKey) parts.push('CommandOrControl')
+    if (e.altKey) parts.push('Alt')
+    if (e.shiftKey) parts.push('Shift')
+
+    if (parts.length === 0) return
+
+    const key = e.code.startsWith('Key') ? e.code.slice(3)
+      : e.code.startsWith('Digit') ? e.code.slice(5)
+      : e.key === ' ' ? 'Space'
+      : e.key.length === 1 ? e.key.toUpperCase()
+      : e.key
+
+    parts.push(key)
+    const shortcut = parts.join('+')
+    setRecordingShortcut(false)
+
+    window.clawwork.updateQuickLaunchConfig(quickLaunchEnabled, shortcut).then((ok) => {
+      if (ok) {
+        setQuickLaunchShortcut(shortcut)
+        toast.success(t('settings.shortcutUpdated'))
+      } else {
+        toast.error(t('settings.quickLaunchShortcutConflict'))
+      }
+    })
+  }, [quickLaunchEnabled, t])
+
+  const handleTrayToggle = useCallback(async (enabled: boolean) => {
+    await window.clawwork.setTrayEnabled(enabled)
+    setTrayEnabled(enabled)
+    toast.success(enabled ? t('settings.trayEnabled') : t('settings.trayDisabled'))
+  }, [t])
 
   useEffect(() => {
     window.clawwork.checkForUpdates().then(setUpdateInfo).catch(() => {})
@@ -411,6 +495,63 @@ export default function Settings({ onClose }: SettingsProps) {
                     {s === 'enter' ? t('settings.sendEnter') : t('settings.sendCmdEnter', { mod: modKey })}
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* System */}
+        <section>
+          <p className={sectionLabel}>{t('settings.system')}</p>
+          <div className={cn(cardClass, 'space-y-4')}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MonitorDot size={14} className="text-[var(--text-muted)] flex-shrink-0" />
+                <div>
+                  <span className="text-sm text-[var(--text-primary)]">{t('settings.trayIcon')}</span>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('settings.trayIconDesc')}</p>
+                </div>
+              </div>
+              <Toggle checked={trayEnabled} onChange={handleTrayToggle} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Zap size={14} className="text-[var(--text-muted)] flex-shrink-0" />
+                <div>
+                  <span className="text-sm text-[var(--text-primary)]">{t('settings.quickLaunch')}</span>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('settings.quickLaunchDesc')}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 flex-shrink-0">
+                {quickLaunchEnabled && (
+                  recordingShortcut ? (
+                    <input
+                      autoFocus
+                      readOnly
+                      placeholder={t('settings.pressShortcut')}
+                      onKeyDown={handleShortcutRecord}
+                      onBlur={() => setRecordingShortcut(false)}
+                      className={cn(
+                        'w-[140px] text-center text-sm font-mono px-2.5 py-1 rounded-md',
+                        'bg-[var(--accent-soft)] border border-[var(--accent)]/40',
+                        'text-[var(--accent)] outline-none animate-pulse',
+                      )}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setRecordingShortcut(true)}
+                      className={cn(
+                        'text-sm font-mono px-2.5 py-1 rounded-md',
+                        'bg-[var(--bg-tertiary)] border border-[var(--border)]',
+                        'text-[var(--text-primary)] hover:border-[var(--accent)]/40 transition-colors',
+                        'cursor-pointer',
+                      )}
+                    >
+                      {quickLaunchShortcut}
+                    </button>
+                  )
+                )}
+                <Toggle checked={quickLaunchEnabled} onChange={handleQuickLaunchToggle} />
               </div>
             </div>
           </div>

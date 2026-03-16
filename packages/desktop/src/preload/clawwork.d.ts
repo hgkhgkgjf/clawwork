@@ -58,6 +58,17 @@ interface GatewayListItem extends GatewayServerConfig {
   connected: boolean;
 }
 
+interface QuickLaunchSettings {
+  enabled: boolean;
+  shortcut: string;
+}
+
+interface QuickLaunchConfigResult {
+  enabled: boolean;
+  shortcut: string;
+  sendShortcut: string;
+}
+
 interface AppSettings {
   workspacePath: string;
   theme?: 'dark' | 'light';
@@ -72,6 +83,8 @@ interface AppSettings {
   voiceInput?: {
     introSeen?: boolean;
   };
+  quickLaunch?: QuickLaunchSettings;
+  trayEnabled?: boolean;
 }
 
 export type VoicePermissionStatus = 'granted' | 'not-determined' | 'denied' | 'unsupported';
@@ -260,6 +273,21 @@ export interface ClawWorkAPI {
   }) => Promise<IpcResult>;
 
   resolveExecApproval: (gatewayId: string, id: string, decision: string) => Promise<IpcResult>;
+
+  updateTrayStatus: (
+    status: 'idle' | 'running' | 'unread' | 'disconnected',
+    tasks?: { taskId: string; title: string; snippet: string; duration: string }[],
+  ) => void;
+  getTrayEnabled: () => Promise<boolean>;
+  setTrayEnabled: (enabled: boolean) => Promise<boolean>;
+  onTrayNavigateTask: (callback: (taskId: string) => void) => (() => void);
+  onTrayOpenSettings: (callback: () => void) => (() => void);
+
+  quickLaunchSubmit: (message: string) => void;
+  quickLaunchHide: () => void;
+  getQuickLaunchConfig: () => Promise<QuickLaunchConfigResult>;
+  updateQuickLaunchConfig: (enabled: boolean, shortcut?: string) => Promise<boolean>;
+  onQuickLaunchSubmit: (callback: (message: string) => void) => (() => void);
 }
 
 declare global {

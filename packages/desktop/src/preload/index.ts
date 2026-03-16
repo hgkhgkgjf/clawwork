@@ -154,6 +154,41 @@ function buildApi(): ClawWorkAPI {
     removeAllListeners: (channel: string) => {
       ipcRenderer.removeAllListeners(channel);
     },
+
+    updateTrayStatus: (status, tasks) =>
+      ipcRenderer.send('tray:update-status', { status, tasks: tasks ?? [] }),
+    getTrayEnabled: () =>
+      ipcRenderer.invoke('tray:get-enabled') as Promise<boolean>,
+    setTrayEnabled: (enabled: boolean) =>
+      ipcRenderer.invoke('tray:set-enabled', enabled) as Promise<boolean>,
+    onTrayNavigateTask: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, taskId: string): void => {
+        callback(taskId);
+      };
+      ipcRenderer.on('tray:navigate-task', listener);
+      return () => { ipcRenderer.removeListener('tray:navigate-task', listener); };
+    },
+    onTrayOpenSettings: (callback) => {
+      const listener = (): void => { callback(); };
+      ipcRenderer.on('tray:open-settings', listener);
+      return () => { ipcRenderer.removeListener('tray:open-settings', listener); };
+    },
+
+    quickLaunchSubmit: (message: string) =>
+      ipcRenderer.send('quick-launch:submit', message),
+    quickLaunchHide: () =>
+      ipcRenderer.send('quick-launch:hide'),
+    getQuickLaunchConfig: () =>
+      ipcRenderer.invoke('quick-launch:get-config'),
+    updateQuickLaunchConfig: (enabled: boolean, shortcut?: string) =>
+      ipcRenderer.invoke('quick-launch:update-config', enabled, shortcut),
+    onQuickLaunchSubmit: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, message: string): void => {
+        callback(message);
+      };
+      ipcRenderer.on('quick-launch:submit', listener);
+      return () => { ipcRenderer.removeListener('quick-launch:submit', listener); };
+    },
   };
 }
 

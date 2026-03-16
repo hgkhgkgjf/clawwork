@@ -24,5 +24,13 @@ export default defineConfig({
       },
     },
     plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/renderer/index.html'),
+          'quick-launch': resolve('src/renderer/quick-launch.html'),
+        },
+      },
+    },
   },
 });

@@ -3,7 +3,7 @@ const TRUNCATE_AT = 500;
 const SECRET_KEY_RE = /(token|password|secret|authorization|cookie)/i;
 
 export type DebugLevel = 'debug' | 'info' | 'warn' | 'error';
-export type DebugDomain = 'app' | 'gateway' | 'ipc' | 'renderer' | 'db' | 'workspace' | 'artifact' | 'debug';
+export type DebugDomain = 'app' | 'gateway' | 'ipc' | 'renderer' | 'db' | 'workspace' | 'artifact' | 'debug' | 'tray' | 'quick-launch';
 
 export interface DebugError {
   name?: string;
