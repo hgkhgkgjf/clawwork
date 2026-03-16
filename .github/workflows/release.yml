@@ -68,14 +68,14 @@ jobs:
         run: pnpm --filter @clawwork/desktop build
 
       - name: Package (${{ matrix.platform }})
-        run: pnpm --filter @clawwork/desktop exec electron-builder ${{ matrix.build_args }} -c.buildVersion="$BUILD_VERSION"
+        run: pnpm --filter @clawwork/desktop exec electron-builder ${{ matrix.build_args }} --publish never -c.buildVersion="$BUILD_VERSION"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BUILD_VERSION: ${{ github.run_number }}
 
       - name: Upload artifacts to release
         uses: softprops/action-gh-release@v2
         with:
+          name: ${{ env.RELEASE_TAG }}
           files: |
             packages/desktop/dist/*.dmg
             packages/desktop/dist/*.zip
