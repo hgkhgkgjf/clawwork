@@ -137,11 +137,8 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI);
     contextBridge.exposeInMainWorld('clawwork', buildApi());
   } catch (error) {
-    console.error(error);
+    throw new Error(`[preload] Failed to expose ClawWork API: ${error instanceof Error ? error.message : String(error)}`);
   }
 } else {
-  // @ts-ignore fallback for non-isolated context
-  window.electron = electronAPI;
-  // @ts-ignore
-  window.clawwork = buildApi();
+  throw new Error('[preload] contextIsolation must be enabled.');
 }

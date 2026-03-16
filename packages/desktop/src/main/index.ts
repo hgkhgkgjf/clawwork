@@ -63,7 +63,9 @@ function createWindow(): BrowserWindow {
     backgroundColor: readConfig()?.theme === 'light' ? '#FAFAFA' : '#1C1C1C',
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
-      sandbox: false,
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
