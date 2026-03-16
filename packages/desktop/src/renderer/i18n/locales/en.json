@@ -152,9 +152,11 @@
     "model": "Model",
     "thinking": "Thinking",
     "thinkingOff": "Off",
+    "thinkingMinimal": "Minimal",
     "thinkingLow": "Low",
     "thinkingMedium": "Medium",
-    "thinkingHigh": "High"
+    "thinkingHigh": "High",
+    "thinkingAdaptive": "Adaptive"
   },
   "voiceInput": {
     "tooltip": "Voice Input (Beta)",

@@ -152,9 +152,11 @@
     "model": "模型",
     "thinking": "思考",
     "thinkingOff": "关闭",
+    "thinkingMinimal": "最低",
     "thinkingLow": "低",
     "thinkingMedium": "中",
-    "thinkingHigh": "高"
+    "thinkingHigh": "高",
+    "thinkingAdaptive": "自适应"
   },
   "voiceInput": {
     "tooltip": "语音输入（Beta）",

@@ -60,14 +60,16 @@ function readAsBase64(file: File): Promise<string> {
   });
 }
 
-const THINKING_LEVELS = ['off', 'low', 'medium', 'high'] as const;
+const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'adaptive'] as const;
 type ThinkingLevel = typeof THINKING_LEVELS[number];
 
 const THINKING_LABEL_KEYS: Record<ThinkingLevel, string> = {
   off: 'chatInput.thinkingOff',
+  minimal: 'chatInput.thinkingMinimal',
   low: 'chatInput.thinkingLow',
   medium: 'chatInput.thinkingMedium',
   high: 'chatInput.thinkingHigh',
+  adaptive: 'chatInput.thinkingAdaptive',
 };
 
 export default function ChatInput() {

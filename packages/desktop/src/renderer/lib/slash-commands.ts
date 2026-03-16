@@ -38,11 +38,11 @@ export const STATIC_SLASH_COMMANDS: SlashCommand[] = [
   // ── Model / Quality ─────────────────────────────────────────────────────────
   { name: 'model',    description: 'Set model (or open picker)',   argHint: '<provider/model>' },
   { name: 'models',   description: 'Open model picker',            argHint: undefined },
-  { name: 'think',    description: 'Set thinking level',           argHint: 'off|low|medium|high' },
+  { name: 'think',    description: 'Set thinking level',           argHint: 'off|minimal|low|medium|high|adaptive' },
   { name: 'fast',     description: 'Set fast mode',                argHint: 'status|on|off' },
   { name: 'verbose',  description: 'Set verbose on/off',           argHint: 'on|off' },
-  { name: 'reasoning',description: 'Set reasoning on/off',         argHint: 'on|off' },
-  { name: 'usage',    description: 'Toggle per-response usage line', argHint: 'off|tokens|full' },
+  { name: 'reasoning',description: 'Set reasoning on/off',         argHint: 'on|off|stream' },
+  { name: 'usage',    description: 'Toggle per-response usage line', argHint: 'off|tokens|full|cost' },
 
   // ── Access / Security ───────────────────────────────────────────────────────
   { name: 'elevated', description: 'Set elevated permission level', argHint: 'on|off|ask|full' },
