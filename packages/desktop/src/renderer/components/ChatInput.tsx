@@ -1,7 +1,7 @@
 import { useRef, useCallback, useState, useEffect, type KeyboardEvent, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2 } from 'lucide-react';
+import { Send, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2, TerminalSquare } from 'lucide-react';
 import type { MessageImageAttachment } from '@clawwork/shared';
 import { toast } from 'sonner';
 import { cn, modKey } from '@/lib/utils';
@@ -19,6 +19,7 @@ import { useTaskStore } from '../stores/taskStore';
 import { useMessageStore } from '../stores/messageStore';
 import { useUiStore } from '../stores/uiStore';
 import SlashCommandMenu from './SlashCommandMenu';
+import SlashCommandDashboard from './SlashCommandDashboard';
 import VoiceIntroDialog from './VoiceIntroDialog';
 import { filterSlashCommands, parseSlashQuery, type SlashCommand } from '@/lib/slash-commands';
 
@@ -83,6 +84,7 @@ export default function ChatInput() {
   const [slashQuery, setSlashQuery] = useState('');
   const [slashIndex, setSlashIndex] = useState(0);
   const slashCommands = filterSlashCommands(slashQuery);
+  const [dashboardOpen, setDashboardOpen] = useState(false);
 
   const sendShortcut = useUiStore((s) => s.sendShortcut);
   const mainView = useUiStore((s) => s.mainView);
@@ -498,6 +500,24 @@ export default function ChatInput() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <DropdownMenuSeparator className="h-4 w-px mx-0.5" />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs',
+                    'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
+                    'hover:bg-[var(--bg-hover)] transition-colors',
+                  )}
+                  onClick={() => setDashboardOpen(true)}
+                >
+                  <TerminalSquare size={12} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{t('slashDashboard.tooltip')}</TooltipContent>
+            </Tooltip>
           </div>
         )}
 
@@ -660,6 +680,11 @@ export default function ChatInput() {
         open={isVoiceIntroOpen}
         onConfirm={confirmVoiceIntro}
         onCancel={dismissVoiceIntro}
+      />
+      <SlashCommandDashboard
+        open={dashboardOpen}
+        onOpenChange={setDashboardOpen}
+        onSelectCommand={commitSlashCommand}
       />
     </div>
   );

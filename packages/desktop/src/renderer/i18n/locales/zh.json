@@ -184,5 +184,14 @@
   },
   "dialog": {
     "selectWorkspaceDir": "选择工作空间目录"
+  },
+  "slashDashboard": {
+    "title": "斜杠命令",
+    "description": "当前会话可用的全部命令",
+    "tooltip": "命令面板",
+    "categorySession": "会话与 Agent",
+    "categoryModel": "模型与质量",
+    "categoryAccess": "权限与安全",
+    "categoryInfo": "信息与帮助"
   }
 }

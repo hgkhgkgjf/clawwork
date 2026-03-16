@@ -184,5 +184,14 @@
   },
   "dialog": {
     "selectWorkspaceDir": "Select Workspace Directory"
+  },
+  "slashDashboard": {
+    "title": "Slash Commands",
+    "description": "All available commands for the current session",
+    "tooltip": "Commands",
+    "categorySession": "Session & Agent",
+    "categoryModel": "Model & Quality",
+    "categoryAccess": "Access & Security",
+    "categoryInfo": "Info & Help"
   }
 }
