@@ -1,5 +1,6 @@
-import { isValidElement, type ReactNode, useEffect, useState } from 'react';
+import { isValidElement, type ReactNode, useEffect, useState, type ComponentPropsWithoutRef } from 'react';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { Check, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +29,13 @@ function flattenTextContent(node: ReactNode): string {
   }
 
   return '';
+}
+
+function extractLang(children: ReactNode): string {
+  if (!isValidElement<{ className?: string }>(children)) return '';
+  const cls = children.props.className ?? '';
+  const match = /language-(\S+)/.exec(cls);
+  return match ? match[1] : '';
 }
 
 interface CopyActionButtonProps {
@@ -73,6 +81,9 @@ function CopyActionButton({ label, copiedLabel, text, className }: CopyActionBut
   );
 }
 
+const REMARK_PLUGINS = [remarkGfm] as const;
+const REHYPE_PLUGINS = [rehypeHighlight] as const;
+
 export default function MarkdownContent({
   content,
   onImageClick,
@@ -89,9 +100,29 @@ export default function MarkdownContent({
       <div className={cn('flex min-w-0 items-start gap-2', showMessageCopy && 'justify-between')}>
         <div className="prose-chat min-w-0 flex-1">
           <Markdown
-            rehypePlugins={[rehypeHighlight]}
+            remarkPlugins={[...REMARK_PLUGINS]}
+            rehypePlugins={[...REHYPE_PLUGINS]}
             components={{
-              img: ({ src, alt }) => {
+              table: ({ children }: ComponentPropsWithoutRef<'table'>) => (
+                <div className="overflow-x-auto my-2">
+                  <table>{children}</table>
+                </div>
+              ),
+              a: ({ href, children }: ComponentPropsWithoutRef<'a'>) => (
+                <a
+                  href={href}
+                  onClick={(e) => {
+                    if (href && /^https?:\/\//.test(href)) {
+                      e.preventDefault();
+                      window.open(href, '_blank');
+                    }
+                  }}
+                  rel="noopener noreferrer"
+                >
+                  {children}
+                </a>
+              ),
+              img: ({ src, alt }: ComponentPropsWithoutRef<'img'>) => {
                 const actualSrc = src?.startsWith('clawwork-media://')
                   ? `file://${src.replace('clawwork-media://', '')}`
                   : src;
@@ -99,20 +130,28 @@ export default function MarkdownContent({
                   <img
                     src={actualSrc}
                     alt={alt ?? ''}
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     className="max-w-full max-h-80 rounded-lg mt-2 cursor-pointer"
                     onClick={() => actualSrc && onImageClick?.(actualSrc)}
                   />
                 );
               },
-              pre: ({ children }) => {
+              pre: ({ children }: ComponentPropsWithoutRef<'pre'>) => {
                 const code = flattenTextContent(children).replace(/\n$/, '');
+                const lang = extractLang(children);
                 return (
-                  <div className="group relative">
+                  <div className="group/code relative">
+                    {lang && (
+                      <span className="absolute left-3 top-2.5 text-xs text-[var(--text-muted)] select-none pointer-events-none">
+                        {lang}
+                      </span>
+                    )}
                     <CopyActionButton
                       label={copyCodeLabel}
                       copiedLabel={copiedLabel}
                       text={code}
-                      className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                      className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover/code:opacity-100 focus-visible:opacity-100"
                     />
                     <pre className="pt-10">{children}</pre>
                   </div>

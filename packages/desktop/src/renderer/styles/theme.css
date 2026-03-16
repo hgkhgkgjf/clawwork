@@ -173,6 +173,53 @@
   .prose-chat h1 { font-size: 1.25em; }
   .prose-chat h2 { font-size: 1.125em; }
   .prose-chat h3 { font-size: 1.0625em; }
+  .prose-chat h4 { font-size: 1em; font-weight: 600; margin: 0.6em 0 0.3em; }
+  .prose-chat h5,
+  .prose-chat h6 { font-size: 0.9375em; font-weight: 600; margin: 0.5em 0 0.25em; }
+
+  .prose-chat table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.9em;
+    margin: 0.6em 0;
+  }
+
+  .prose-chat th,
+  .prose-chat td {
+    border: 1px solid var(--border);
+    padding: 0.4em 0.75em;
+    text-align: left;
+  }
+
+  .prose-chat thead th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+  }
+
+  .prose-chat tbody tr:nth-child(even) {
+    background: var(--bg-secondary);
+  }
+
+  .prose-chat hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1em 0;
+  }
+
+  .prose-chat del {
+    color: var(--text-muted);
+    text-decoration: line-through;
+  }
+
+  .prose-chat input[type="checkbox"] {
+    margin-right: 0.4em;
+    accent-color: var(--accent);
+  }
+
+  .prose-chat li:has(> input[type="checkbox"]) {
+    list-style: none;
+    margin-left: -1.2em;
+  }
 }
 
 /* ============================================================

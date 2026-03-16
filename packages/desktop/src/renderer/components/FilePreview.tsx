@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import Markdown from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight';
 import { X, ExternalLink, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Artifact } from '@clawwork/shared';
@@ -9,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion as motionPresets } from '@/styles/design-tokens';
+import MarkdownContent from './MarkdownContent';
 
 interface FilePreviewProps {
   artifact: Artifact;
@@ -135,8 +134,8 @@ function PreviewContent({ content, encoding, mimeType, name }: {
 
   if (isMarkdown(mimeType, name)) {
     return (
-      <div className="prose-chat max-w-none">
-        <Markdown rehypePlugins={[rehypeHighlight]}>{content}</Markdown>
+      <div className="max-w-none">
+        <MarkdownContent content={content} />
       </div>
     );
   }
@@ -145,8 +144,8 @@ function PreviewContent({ content, encoding, mimeType, name }: {
     const lang = langFromName(name);
     const fenced = lang ? `\`\`\`${lang}\n${content}\n\`\`\`` : `\`\`\`\n${content}\n\`\`\``;
     return (
-      <div className="prose-chat max-w-none">
-        <Markdown rehypePlugins={[rehypeHighlight]}>{fenced}</Markdown>
+      <div className="max-w-none">
+        <MarkdownContent content={fenced} />
       </div>
     );
   }

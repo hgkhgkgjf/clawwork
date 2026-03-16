@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import 'highlight.js/styles/github-dark.css';
 import './styles/theme.css';
 import i18n from './i18n';
 import { useUiStore, type Language } from './stores/uiStore';
