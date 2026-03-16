@@ -272,7 +272,13 @@ export interface ClawWorkAPI {
     id: string; taskId: string; role: string; content: string; timestamp: string;
   }) => Promise<IpcResult>;
 
+  deleteTask: (taskId: string) => Promise<IpcResult>;
+
   resolveExecApproval: (gatewayId: string, id: string, decision: string) => Promise<IpcResult>;
+
+  resetSession: (gatewayId: string, sessionKey: string, reason?: 'new' | 'reset') => Promise<IpcResult>;
+  deleteSession: (gatewayId: string, sessionKey: string) => Promise<IpcResult>;
+  compactSession: (gatewayId: string, sessionKey: string, maxLines?: number) => Promise<IpcResult>;
 
   updateTrayStatus: (
     status: 'idle' | 'running' | 'unread' | 'disconnected',

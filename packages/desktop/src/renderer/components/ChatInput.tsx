@@ -1,7 +1,7 @@
 import { useRef, useCallback, useState, useEffect, useMemo, type KeyboardEvent, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Square, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2, TerminalSquare } from 'lucide-react';
+import { Send, Square, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2, TerminalSquare, Minimize2, RotateCcw } from 'lucide-react';
 import type { MessageImageAttachment, ModelCatalogEntry } from '@clawwork/shared';
 import { toast } from 'sonner';
 import { cn, modKey } from '@/lib/utils';
@@ -383,6 +383,24 @@ export default function ChatInput() {
     void handleSend();
   }, [activeTask, handleSend]);
 
+  const handleCompact = useCallback(() => {
+    if (!activeTask || isOffline) return;
+    window.clawwork.compactSession(activeTask.gatewayId, activeTask.sessionKey).then((res) => {
+      if (res.ok) addMessage(activeTask.id, 'system', t('session.contextCompacted'));
+    }).catch(() => {});
+  }, [activeTask, isOffline, addMessage, t]);
+
+  const handleReset = useCallback(() => {
+    if (!activeTask || isOffline) return;
+    const { clearMessages } = useMessageStore.getState();
+    window.clawwork.resetSession(activeTask.gatewayId, activeTask.sessionKey, 'reset').then((res) => {
+      if (res.ok) {
+        clearMessages(activeTask.id);
+        addMessage(activeTask.id, 'system', t('session.contextReset'));
+      }
+    }).catch(() => {});
+  }, [activeTask, isOffline, addMessage, t]);
+
   const [aborting, setAborting] = useState(false);
   const handleAbort = useCallback(async () => {
     if (!activeTask || aborting) return;
@@ -674,6 +692,39 @@ export default function ChatInput() {
               </TooltipTrigger>
               <TooltipContent side="top">{t('slashDashboard.tooltip')}</TooltipContent>
             </Tooltip>
+
+            <div className="ml-auto flex items-center gap-0.5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className={cn(
+                      'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs',
+                      'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
+                      'hover:bg-[var(--bg-hover)] transition-colors',
+                    )}
+                    onClick={handleCompact}
+                  >
+                    <Minimize2 size={12} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{t('contextMenu.compactSession')}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className={cn(
+                      'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs',
+                      'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
+                      'hover:bg-[var(--bg-hover)] transition-colors',
+                    )}
+                    onClick={handleReset}
+                  >
+                    <RotateCcw size={12} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{t('contextMenu.resetSession')}</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         )}
 

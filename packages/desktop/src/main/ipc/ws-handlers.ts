@@ -347,6 +347,53 @@ export function registerWsHandlers(): void {
       return { ok: false, error: msg };
     }
   });
+
+  ipcMain.handle('ws:session-reset', async (_event, payload: {
+    gatewayId: string;
+    sessionKey: string;
+    reason?: 'new' | 'reset';
+  }) => {
+    const gw = getGatewayClient(payload.gatewayId);
+    if (!gw?.isConnected) return { ok: false, error: 'gateway not connected' };
+    try {
+      await gw.resetSession(payload.sessionKey, payload.reason);
+      return { ok: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'unknown error';
+      return { ok: false, error: msg };
+    }
+  });
+
+  ipcMain.handle('ws:session-delete', async (_event, payload: {
+    gatewayId: string;
+    sessionKey: string;
+  }) => {
+    const gw = getGatewayClient(payload.gatewayId);
+    if (!gw?.isConnected) return { ok: false, error: 'gateway not connected' };
+    try {
+      await gw.deleteSession(payload.sessionKey, true);
+      return { ok: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'unknown error';
+      return { ok: false, error: msg };
+    }
+  });
+
+  ipcMain.handle('ws:session-compact', async (_event, payload: {
+    gatewayId: string;
+    sessionKey: string;
+    maxLines?: number;
+  }) => {
+    const gw = getGatewayClient(payload.gatewayId);
+    if (!gw?.isConnected) return { ok: false, error: 'gateway not connected' };
+    try {
+      await gw.compactSession(payload.sessionKey, payload.maxLines);
+      return { ok: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'unknown error';
+      return { ok: false, error: msg };
+    }
+  });
 }
 
 function safeJsonParse(raw: string): Record<string, unknown> | undefined {

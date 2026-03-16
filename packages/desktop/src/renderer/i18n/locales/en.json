@@ -131,7 +131,10 @@
   "contextMenu": {
     "markCompleted": "Mark Completed",
     "archive": "Archive",
-    "reactivate": "Reactivate"
+    "reactivate": "Reactivate",
+    "compactSession": "Compact Session",
+    "resetSession": "Reset Session",
+    "deleteTask": "Delete Task"
   },
   "connection": {
     "connected": "Connected",
@@ -148,6 +151,10 @@
   },
   "archived": {
     "empty": "No archived chats"
+  },
+  "session": {
+    "contextReset": "Session context has been reset",
+    "contextCompacted": "Session compacted — older messages have been summarized"
   },
   "errors": {
     "requestFailed": "Request failed",
@@ -197,7 +204,12 @@
     "thinkingProcess": "Thinking process"
   },
   "dialog": {
-    "selectWorkspaceDir": "Select Workspace Directory"
+    "selectWorkspaceDir": "Select Workspace Directory",
+    "resetSessionTitle": "Reset Session",
+    "resetSessionDesc": "This will clear the conversation context on the server. Local message history will be cleared. The task itself will remain.",
+    "deleteTaskTitle": "Delete Task",
+    "deleteTaskDesc": "This will permanently delete the task, all messages, and the server session. This cannot be undone.",
+    "confirm": "Continue"
   },
   "slashDashboard": {
     "title": "Slash Commands",

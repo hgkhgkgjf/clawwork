@@ -494,6 +494,14 @@ export class GatewayClient {
     });
   }
 
+  private sessionMeta(sessionKey: string) {
+    return {
+      requestId: randomUUID(),
+      sessionKey,
+      taskId: parseTaskIdFromSessionKey(sessionKey) ?? undefined,
+    };
+  }
+
   async sendChatMessage(
     sessionKey: string,
     message: string,
@@ -508,27 +516,15 @@ export class GatewayClient {
     if (attachments?.length) {
       params.attachments = attachments;
     }
-    return this.sendReq('chat.send', params, {
-      requestId: randomUUID(),
-      sessionKey,
-      taskId: parseTaskIdFromSessionKey(sessionKey) ?? undefined,
-    });
+    return this.sendReq('chat.send', params, this.sessionMeta(sessionKey));
   }
 
   async abortChat(sessionKey: string): Promise<Record<string, unknown>> {
-    return this.sendReq('chat.abort', { sessionKey }, {
-      requestId: randomUUID(),
-      sessionKey,
-      taskId: parseTaskIdFromSessionKey(sessionKey) ?? undefined,
-    });
+    return this.sendReq('chat.abort', { sessionKey }, this.sessionMeta(sessionKey));
   }
 
   async getChatHistory(sessionKey: string, limit = 50): Promise<Record<string, unknown>> {
-    return this.sendReq('chat.history', { sessionKey, limit }, {
-      requestId: randomUUID(),
-      sessionKey,
-      taskId: parseTaskIdFromSessionKey(sessionKey) ?? undefined,
-    });
+    return this.sendReq('chat.history', { sessionKey, limit }, this.sessionMeta(sessionKey));
   }
 
   async listSessions(): Promise<Record<string, unknown>> {
@@ -545,6 +541,20 @@ export class GatewayClient {
 
   async patchSession(params: Record<string, unknown>): Promise<Record<string, unknown>> {
     return this.sendReq('sessions.patch', params);
+  }
+
+  async resetSession(sessionKey: string, reason: 'new' | 'reset' = 'reset'): Promise<Record<string, unknown>> {
+    return this.sendReq('sessions.reset', { key: sessionKey, reason }, this.sessionMeta(sessionKey));
+  }
+
+  async deleteSession(sessionKey: string, deleteTranscript = true): Promise<Record<string, unknown>> {
+    return this.sendReq('sessions.delete', { key: sessionKey, deleteTranscript }, this.sessionMeta(sessionKey));
+  }
+
+  async compactSession(sessionKey: string, maxLines?: number): Promise<Record<string, unknown>> {
+    const params: Record<string, unknown> = { key: sessionKey };
+    if (maxLines !== undefined) params.maxLines = maxLines;
+    return this.sendReq('sessions.compact', params, this.sessionMeta(sessionKey));
   }
 
   get isConnected(): boolean {

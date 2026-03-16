@@ -32,6 +32,7 @@ interface TaskState {
     contextTokens?: number;
     updatedAt?: string;
   }) => void;
+  removeTask: (id: string) => void;
   hydrate: () => Promise<void>;
   adoptTasks: (discovered: {
     taskId: string;
@@ -131,6 +132,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       contextTokens: meta.contextTokens,
       updatedAt,
     }).catch(() => {});
+  },
+
+  removeTask: (id) => {
+    set((s) => {
+      const nextActiveId = s.activeTaskId === id ? null : s.activeTaskId;
+      return {
+        tasks: s.tasks.filter((t) => t.id !== id),
+        activeTaskId: nextActiveId,
+      };
+    });
+    window.clawwork.deleteTask(id).catch(() => {});
   },
 
   hydrate: async () => {

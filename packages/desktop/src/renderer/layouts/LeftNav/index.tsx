@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, type MouseEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, type MouseEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, Search, FolderOpen, Settings, Archive, Server, ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTaskStore } from '@/stores/taskStore'
+import { useMessageStore } from '@/stores/messageStore'
 import { useUiStore } from '@/stores/uiStore'
-import { useTaskContextMenu } from '@/components/ContextMenu'
+import { useTaskContextMenu, type SessionActions } from '@/components/ContextMenu'
 import SearchResults, { type SearchResult } from '@/components/SearchResults'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -14,9 +15,15 @@ import {
   DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import {
+  Dialog, DialogContent, DialogHeader, DialogFooter,
+  DialogTitle, DialogDescription,
+} from '@/components/ui/dialog'
 import TaskItem from './TaskItem'
 import ConnectionStatus from './ConnectionStatus'
 import type { TaskStatus } from '@clawwork/shared'
+
+type ConfirmAction = 'reset' | 'delete' | null
 
 export default function LeftNav() {
   const { t } = useTranslation()
@@ -25,6 +32,9 @@ export default function LeftNav() {
   const startNewTask = useTaskStore((s) => s.startNewTask)
   const setActiveTask = useTaskStore((s) => s.setActiveTask)
   const updateTaskStatus = useTaskStore((s) => s.updateTaskStatus)
+  const removeTask = useTaskStore((s) => s.removeTask)
+  const clearMessages = useMessageStore((s) => s.clearMessages)
+  const addMessage = useMessageStore((s) => s.addMessage)
   const mainView = useUiStore((s) => s.mainView)
   const setMainView = useUiStore((s) => s.setMainView)
   const settingsOpen = useUiStore((s) => s.settingsOpen)
@@ -36,14 +46,59 @@ export default function LeftNav() {
   const hasMultipleGateways = connectedGateways.length > 1
   const searchFocusTrigger = useUiStore((s) => s.searchFocusTrigger)
 
-  // Aggregate: if any gateway connected → connected; any connecting → connecting; else disconnected
   const gwStatusValues = Object.values(gwStatusMap)
   const aggregatedGwStatus: 'connected' | 'connecting' | 'disconnected' =
     gwStatusValues.some((s) => s === 'connected') ? 'connected'
     : gwStatusValues.some((s) => s === 'connecting') ? 'connecting'
     : 'disconnected'
 
-  const { items, isOpen, openMenu, closeMenu } = useTaskContextMenu(updateTaskStatus)
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
+  const [confirmTaskId, setConfirmTaskId] = useState('')
+
+  const findTask = (taskId: string) =>
+    useTaskStore.getState().tasks.find((t) => t.id === taskId)
+
+  const handleCompact = useCallback((taskId: string) => {
+    const task = findTask(taskId)
+    if (!task) return
+    window.clawwork.compactSession(task.gatewayId, task.sessionKey).then((res) => {
+      if (res.ok) addMessage(taskId, 'system', t('session.contextCompacted'))
+    }).catch(() => {})
+  }, [addMessage, t])
+
+  const handleResetConfirm = useCallback(() => {
+    const task = findTask(confirmTaskId)
+    if (!task) { setConfirmAction(null); return }
+    window.clawwork.resetSession(task.gatewayId, task.sessionKey, 'reset').then((res) => {
+      if (res.ok) {
+        clearMessages(confirmTaskId)
+        addMessage(confirmTaskId, 'system', t('session.contextReset'))
+      }
+    }).catch(() => {})
+    setConfirmAction(null)
+  }, [confirmTaskId, clearMessages, addMessage, t])
+
+  const handleDeleteConfirm = useCallback(() => {
+    const task = findTask(confirmTaskId)
+    if (task) {
+      window.clawwork.deleteSession(task.gatewayId, task.sessionKey).catch(() => {})
+    }
+    clearMessages(confirmTaskId)
+    removeTask(confirmTaskId)
+    setConfirmAction(null)
+  }, [confirmTaskId, clearMessages, removeTask])
+
+  const sessionActions: SessionActions = useMemo(() => ({
+    compact: handleCompact,
+    reset: (taskId: string) => { setConfirmTaskId(taskId); setConfirmAction('reset') },
+    deleteTask: (taskId: string) => { setConfirmTaskId(taskId); setConfirmAction('delete') },
+    isConnected: (taskId: string) => {
+      const task = findTask(taskId)
+      return task ? gwStatusMap[task.gatewayId] === 'connected' : false
+    },
+  }), [handleCompact, gwStatusMap])
+
+  const { items, isOpen, openMenu, closeMenu } = useTaskContextMenu(updateTaskStatus, sessionActions)
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
@@ -243,13 +298,37 @@ export default function LeftNav() {
           style={menuPos ? { position: 'fixed', left: menuPos.x, top: menuPos.y } : undefined}
         >
           {items.map((item) => (
-            <DropdownMenuItem key={item.label} danger={item.danger}
+            <DropdownMenuItem key={item.label} danger={item.danger} disabled={item.disabled}
               onClick={() => { item.action(); closeMenu() }}>
               {item.label}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <Dialog open={confirmAction !== null} onOpenChange={(open) => { if (!open) setConfirmAction(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmAction === 'reset' ? t('dialog.resetSessionTitle') : t('dialog.deleteTaskTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmAction === 'reset' ? t('dialog.resetSessionDesc') : t('dialog.deleteTaskDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setConfirmAction(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant={confirmAction === 'delete' ? 'danger' : 'default'}
+              onClick={confirmAction === 'reset' ? handleResetConfirm : handleDeleteConfirm}
+            >
+              {t('dialog.confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

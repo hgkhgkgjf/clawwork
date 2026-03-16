@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import { eq, desc } from 'drizzle-orm';
 import { getDb, isDbReady } from '../db/index.js';
-import { tasks, messages } from '../db/schema.js';
+import { tasks, messages, artifacts } from '../db/schema.js';
 
 function ipcError(err: unknown): { ok: false; error: string } {
   return { ok: false, error: err instanceof Error ? err.message : 'unknown' };
@@ -106,6 +106,20 @@ export function registerDataHandlers(): void {
       return { ok: true };
     } catch (err) {
       console.error('[data] create-message failed:', err);
+      return ipcError(err);
+    }
+  });
+
+  ipcMain.handle('data:delete-task', (_event, params: { id: string }) => {
+    if (!isDbReady()) return ipcError(new Error('database not ready'));
+    try {
+      const db = getDb();
+      db.delete(artifacts).where(eq(artifacts.taskId, params.id)).run();
+      db.delete(messages).where(eq(messages.taskId, params.id)).run();
+      db.delete(tasks).where(eq(tasks.id, params.id)).run();
+      return { ok: true };
+    } catch (err) {
+      console.error('[data] delete-task failed:', err);
       return ipcError(err);
     }
   });

@@ -148,8 +148,18 @@ function buildApi(): ClawWorkAPI {
       id: string; taskId: string; role: string; content: string; timestamp: string;
     }) => ipcRenderer.invoke('data:create-message', msg),
 
+    deleteTask: (taskId: string) =>
+      ipcRenderer.invoke('data:delete-task', { id: taskId }),
+
     resolveExecApproval: (gatewayId: string, id: string, decision: string) =>
       ipcRenderer.invoke('ws:exec-approval-resolve', { gatewayId, id, decision }),
+
+    resetSession: (gatewayId: string, sessionKey: string, reason?: 'new' | 'reset') =>
+      ipcRenderer.invoke('ws:session-reset', { gatewayId, sessionKey, reason }),
+    deleteSession: (gatewayId: string, sessionKey: string) =>
+      ipcRenderer.invoke('ws:session-delete', { gatewayId, sessionKey }),
+    compactSession: (gatewayId: string, sessionKey: string, maxLines?: number) =>
+      ipcRenderer.invoke('ws:session-compact', { gatewayId, sessionKey, maxLines }),
 
     removeAllListeners: (channel: string) => {
       ipcRenderer.removeAllListeners(channel);

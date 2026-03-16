@@ -131,7 +131,10 @@
   "contextMenu": {
     "markCompleted": "标记完成",
     "archive": "归档",
-    "reactivate": "重新激活"
+    "reactivate": "重新激活",
+    "compactSession": "压缩会话",
+    "resetSession": "重置会话",
+    "deleteTask": "删除任务"
   },
   "connection": {
     "connected": "已连接",
@@ -148,6 +151,10 @@
   },
   "archived": {
     "empty": "暂无归档对话"
+  },
+  "session": {
+    "contextReset": "会话上下文已重置",
+    "contextCompacted": "会话已压缩 — 旧消息已被摘要"
   },
   "errors": {
     "requestFailed": "请求出错",
@@ -197,7 +204,12 @@
     "thinkingProcess": "思考过程"
   },
   "dialog": {
-    "selectWorkspaceDir": "选择工作空间目录"
+    "selectWorkspaceDir": "选择工作空间目录",
+    "resetSessionTitle": "重置会话",
+    "resetSessionDesc": "将清除服务器上的对话上下文，本地消息记录也会被清空。任务本身保留。",
+    "deleteTaskTitle": "删除任务",
+    "deleteTaskDesc": "将永久删除该任务、所有消息和服务器会话，此操作不可撤销。",
+    "confirm": "继续"
   },
   "slashDashboard": {
     "title": "斜杠命令",
