@@ -56,23 +56,26 @@ interface UiState {
   hasUpdate: boolean;
   setHasUpdate: (has: boolean) => void;
 
-  /** Available models from Gateway */
-  modelCatalog: ModelCatalogEntry[];
-  setModelCatalog: (models: ModelCatalogEntry[]) => void;
+  /** Per-gateway model catalogs */
+  modelCatalogByGateway: Record<string, ModelCatalogEntry[]>;
+  setModelCatalogForGateway: (gatewayId: string, models: ModelCatalogEntry[]) => void;
 
-  /** Available agents from Gateway */
-  agentCatalog: AgentInfo[];
-  defaultAgentId: string;
-  setAgentCatalog: (agents: AgentInfo[], defaultId: string) => void;
+  /** Per-gateway agent catalogs */
+  agentCatalogByGateway: Record<string, { agents: AgentInfo[]; defaultId: string }>;
+  setAgentCatalogForGateway: (gatewayId: string, agents: AgentInfo[], defaultId: string) => void;
 
   sendShortcut: SendShortcut;
   setSendShortcut: (shortcut: SendShortcut) => void;
 
   searchFocusTrigger: number;
   focusSearch: () => void;
+
+  getAgentsForGateway: (gatewayId: string) => { agents: AgentInfo[]; defaultId: string };
 }
 
-export const useUiStore = create<UiState>((set) => ({
+const EMPTY_AGENT_CATALOG = { agents: [] as AgentInfo[], defaultId: 'main' };
+
+export const useUiStore = create<UiState>((set, get) => ({
   rightPanelOpen: false,
   toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
   setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
@@ -122,12 +125,23 @@ export const useUiStore = create<UiState>((set) => ({
   hasUpdate: false,
   setHasUpdate: (has) => set({ hasUpdate: has }),
 
-  modelCatalog: [],
-  setModelCatalog: (models) => set({ modelCatalog: models }),
+  modelCatalogByGateway: {},
+  setModelCatalogForGateway: (gatewayId, models) =>
+    set((s) => ({
+      modelCatalogByGateway: {
+        ...s.modelCatalogByGateway,
+        [gatewayId]: models,
+      },
+    })),
 
-  agentCatalog: [],
-  defaultAgentId: 'main',
-  setAgentCatalog: (agents, defaultId) => set({ agentCatalog: agents, defaultAgentId: defaultId }),
+  agentCatalogByGateway: {},
+  setAgentCatalogForGateway: (gatewayId, agents, defaultId) =>
+    set((s) => ({
+      agentCatalogByGateway: {
+        ...s.agentCatalogByGateway,
+        [gatewayId]: { agents, defaultId },
+      },
+    })),
 
   sendShortcut: 'enter',
   setSendShortcut: (shortcut) => {
@@ -137,4 +151,9 @@ export const useUiStore = create<UiState>((set) => ({
 
   searchFocusTrigger: 0,
   focusSearch: () => set((s) => ({ searchFocusTrigger: s.searchFocusTrigger + 1 })),
+
+  getAgentsForGateway: (gatewayId: string) => {
+    const entry = get().agentCatalogByGateway[gatewayId];
+    return entry ?? EMPTY_AGENT_CATALOG;
+  },
 }));

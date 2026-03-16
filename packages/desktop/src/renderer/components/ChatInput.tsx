@@ -2,7 +2,7 @@ import { useRef, useCallback, useState, useEffect, useMemo, type KeyboardEvent, 
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Square, Paperclip, X, ChevronDown, Cpu, Brain, Mic, Loader2, TerminalSquare } from 'lucide-react';
-import type { MessageImageAttachment } from '@clawwork/shared';
+import type { MessageImageAttachment, ModelCatalogEntry } from '@clawwork/shared';
 import { toast } from 'sonner';
 import { cn, modKey } from '@/lib/utils';
 import { motion as motionPresets } from '@/styles/design-tokens';
@@ -34,6 +34,7 @@ interface PendingImage {
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_TYPES = 'image/png,image/jpeg,image/gif,image/webp';
 const GATEWAY_INJECTED_MODEL = 'gateway-injected';
+const EMPTY_MODELS_CATALOG: ModelCatalogEntry[] = [];
 
 function getModelLabel(model: string | undefined, fallback?: string): string {
   if (!model || model === GATEWAY_INJECTED_MODEL) return fallback ?? 'Default';
@@ -121,7 +122,9 @@ export default function ChatInput() {
 
   const buildArgOptions = useCallback((cmd: SlashCommand): ArgOption[] => {
     if (cmd.pickerType === 'model') {
-      const catalog = useUiStore.getState().modelCatalog;
+      const gwId = useTaskStore.getState().tasks.find((t) => t.id === useTaskStore.getState().activeTaskId)?.gatewayId
+        ?? useTaskStore.getState().pendingNewTask?.gatewayId;
+      const catalog = gwId ? useUiStore.getState().modelCatalogByGateway[gwId] ?? [] : [];
       return catalog.map((m) => ({
         value: m.id,
         label: m.name ?? m.id,
@@ -201,13 +204,20 @@ export default function ChatInput() {
   const setProcessing = useMessageStore((s) => s.setProcessing);
   const updateTaskTitle = useTaskStore((s) => s.updateTaskTitle);
   const updateTaskMetadata = useTaskStore((s) => s.updateTaskMetadata);
+  const commitPendingTask = useTaskStore((s) => s.commitPendingTask);
+  const pendingNewTask = useTaskStore((s) => s.pendingNewTask);
   const isOffline = useUiStore((s) => {
-    if (!activeTask) return false;
-    const gwStatus = s.gatewayStatusMap[activeTask.gatewayId];
-    return gwStatus === 'disconnected' || gwStatus === undefined;
+    const gwId = activeTask?.gatewayId ?? pendingNewTask?.gatewayId;
+    if (gwId) {
+      const st = s.gatewayStatusMap[gwId];
+      return st === 'disconnected' || st === undefined;
+    }
+    const values = Object.values(s.gatewayStatusMap);
+    return values.length > 0 && !values.some((v) => v === 'connected');
   });
 
-  const modelCatalog = useUiStore((s) => s.modelCatalog);
+  const taskGwId = activeTask?.gatewayId ?? pendingNewTask?.gatewayId;
+  const modelCatalog = useUiStore((s) => (taskGwId ? s.modelCatalogByGateway[taskGwId] : undefined) ?? EMPTY_MODELS_CATALOG);
   const currentModel = activeTask?.model === GATEWAY_INJECTED_MODEL ? undefined : activeTask?.model;
   const currentThinking = (activeTask?.thinkingLevel ?? 'off') as ThinkingLevel;
   const [whisperAvailable, setWhisperAvailable] = useState(false);
@@ -250,7 +260,7 @@ export default function ChatInput() {
     stopListening: stopVoiceInput,
   } = useVoiceInput({
     textareaRef,
-    hasActiveTask: Boolean(activeTask) && !isOffline,
+    hasActiveTask: !isOffline,
     activeTaskKey: activeTask?.id ?? null,
     mainView,
     settingsOpen,
@@ -299,11 +309,16 @@ export default function ChatInput() {
 
   const handleSend = useCallback(async () => {
     const textarea = textareaRef.current;
-    if (!textarea || !activeTask || isOffline) return;
+    if (!textarea || isOffline) return;
     stopVoiceInput();
 
     const content = textarea.value.trim();
     if (!content && !pendingImages.length) return;
+
+    let task = activeTask;
+    if (!task) {
+      task = commitPendingTask();
+    }
 
     textarea.value = '';
     textarea.style.height = 'auto';
@@ -314,13 +329,13 @@ export default function ChatInput() {
       ? images.map((img) => ({ fileName: img.file.name, dataUrl: img.previewUrl }))
       : undefined;
 
-    addMessage(activeTask.id, 'user', content || '', msgImages);
-    setProcessing(activeTask.id, true);
+    addMessage(task.id, 'user', content || '', msgImages);
+    setProcessing(task.id, true);
 
-    if (!activeTask.title) {
+    if (!task.title) {
       const titleSource = content || (images.length ? `[${t('chatInput.image')}]` : '');
       const title = titleSource.slice(0, 30).replace(/\n/g, ' ').trim();
-      updateTaskTitle(activeTask.id, title + (titleSource.length > 30 ? '\u2026' : ''));
+      updateTaskTitle(task.id, title + (titleSource.length > 30 ? '\u2026' : ''));
     }
 
     try {
@@ -331,20 +346,20 @@ export default function ChatInput() {
             content: await readAsBase64(img.file),
           })))
         : undefined;
-      const result = await window.clawwork.sendMessage(activeTask.gatewayId, activeTask.sessionKey, content || '', attachments);
+      const result = await window.clawwork.sendMessage(task.gatewayId, task.sessionKey, content || '', attachments);
       if (result && !result.ok) {
-        setProcessing(activeTask.id, false);
+        setProcessing(task.id, false);
         const msg = result.error || t('errors.sendFailed');
-        addMessage(activeTask.id, 'system', `${t('errors.sendFailed')}: ${msg}`);
+        addMessage(task.id, 'system', `${t('errors.sendFailed')}: ${msg}`);
         toast.error('Failed to send message', { description: msg });
       }
     } catch (err) {
-      setProcessing(activeTask.id, false);
+      setProcessing(task.id, false);
       const msg = err instanceof Error ? err.message : String(err);
-      addMessage(activeTask.id, 'system', `${t('errors.sendFailed')}: ${msg}`);
+      addMessage(task.id, 'system', `${t('errors.sendFailed')}: ${msg}`);
       toast.error('Failed to send message', { description: msg });
     }
-  }, [activeTask, addMessage, setProcessing, updateTaskTitle, isOffline, pendingImages, stopVoiceInput, t]);
+  }, [activeTask, addMessage, setProcessing, updateTaskTitle, isOffline, pendingImages, stopVoiceInput, commitPendingTask, t]);
 
   const handleModelQuickSend = useCallback((modelId: string) => {
     const ta = textareaRef.current;
@@ -489,12 +504,10 @@ export default function ChatInput() {
   }, []);
 
   const voiceActive = isVoiceListening || isVoiceTranscribing;
-  const disabled = !activeTask || isOffline;
+  const disabled = isOffline;
   const placeholder = isOffline
     ? t('chatInput.offlineReadOnly')
-    : !activeTask
-      ? t('chatInput.createTaskFirst')
-      : t('chatInput.describeTask');
+    : t('chatInput.describeTask');
   const voiceTooltip = !isVoiceSupported
     ? t('voiceInput.unsupportedTooltip')
     : t('voiceInput.tooltip');

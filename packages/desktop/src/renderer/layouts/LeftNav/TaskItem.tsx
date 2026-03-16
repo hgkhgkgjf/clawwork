@@ -28,7 +28,7 @@ export default function TaskItem({ task, active, onContextMenu }: TaskItemProps)
   const isStreaming = useMessageStore((s) => !!s.streamingByTask[task.id])
   const gwInfo = useUiStore((s) => s.gatewayInfoMap[task.gatewayId])
   const multiGateway = useUiStore((s) => Object.keys(s.gatewayInfoMap).length > 1)
-  const agentInfo = useUiStore((s) => task.agentId && task.agentId !== 'main' ? s.agentCatalog.find((a) => a.id === task.agentId) : undefined)
+  const agentInfo = useUiStore((s) => task.agentId && task.agentId !== 'main' ? s.agentCatalogByGateway[task.gatewayId]?.agents.find((a) => a.id === task.agentId) : undefined)
   const modelLabel = task.model === GATEWAY_INJECTED_MODEL ? 'Default' : task.model?.split('/').pop()
   const modelTooltip = task.model === GATEWAY_INJECTED_MODEL ? 'Default' : task.model
 

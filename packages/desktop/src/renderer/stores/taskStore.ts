@@ -3,10 +3,21 @@ import { buildSessionKey } from '@clawwork/shared';
 import type { Task, TaskStatus } from '@clawwork/shared';
 import { useUiStore } from './uiStore';
 
+interface PendingNewTask {
+  gatewayId: string;
+  agentId: string;
+}
+
 interface TaskState {
   tasks: Task[];
   activeTaskId: string | null;
   hydrated: boolean;
+
+  pendingNewTask: PendingNewTask | null;
+
+  startNewTask: (gatewayId?: string, agentId?: string) => void;
+  commitPendingTask: () => Task;
+  clearPending: () => void;
 
   createTask: (gatewayId?: string, agentId?: string) => Task;
   setActiveTask: (id: string | null) => void;
@@ -42,6 +53,28 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   activeTaskId: null,
   hydrated: false,
+  pendingNewTask: null,
+
+  startNewTask: (gatewayId?, agentId?) => {
+    const resolvedGatewayId = gatewayId ?? useUiStore.getState().defaultGatewayId ?? '';
+    const resolvedAgentId = agentId ?? 'main';
+    set({
+      activeTaskId: null,
+      pendingNewTask: { gatewayId: resolvedGatewayId, agentId: resolvedAgentId },
+    });
+    useUiStore.getState().setMainView('chat');
+  },
+
+  commitPendingTask: () => {
+    const pending = get().pendingNewTask;
+    const gwId = pending?.gatewayId ?? useUiStore.getState().defaultGatewayId ?? '';
+    const agId = pending?.agentId ?? 'main';
+    const task = get().createTask(gwId, agId);
+    set({ pendingNewTask: null });
+    return task;
+  },
+
+  clearPending: () => set({ pendingNewTask: null }),
 
   createTask: (gatewayId?, agentId?) => {
     const resolvedGatewayId = gatewayId ?? useUiStore.getState().defaultGatewayId ?? '';

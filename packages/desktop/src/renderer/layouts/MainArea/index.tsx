@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { PanelRightOpen, RotateCcw, Archive, Plus, Server, ChevronDown, Bot, Cpu, ArrowUp, ArrowDown } from 'lucide-react'
+import { PanelRightOpen, RotateCcw, Archive, Server, Bot, Cpu, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { ToolCall } from '@clawwork/shared'
 import { useTaskStore } from '@/stores/taskStore'
 import { useMessageStore, EMPTY_MESSAGES } from '@/stores/messageStore'
-import { useUiStore, type GatewayInfo } from '@/stores/uiStore'
+import { useUiStore } from '@/stores/uiStore'
 import { cn, formatRelativeTime, formatTokenCount } from '@/lib/utils'
 import { motion as motionPresets } from '@/styles/design-tokens'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
-import {
-  DropdownMenu, DropdownMenuTrigger,
-  DropdownMenuContent, DropdownMenuItem,
-} from '@/components/ui/dropdown-menu'
 import ChatMessage from '@/components/ChatMessage'
 import StreamingMessage from '@/components/StreamingMessage'
 import ThinkingIndicator from '@/components/ThinkingIndicator'
@@ -22,6 +18,7 @@ import ChatInput from '@/components/ChatInput'
 import ImageLightbox from '@/components/ImageLightbox'
 import FileBrowser from '../FileBrowser'
 import logo from '@/assets/logo.png'
+import { fetchAgentsForGateway } from '@/hooks/useGatewayDispatcher'
 
 const STICK_TO_BOTTOM_THRESHOLD_PX = 60
 const EMPTY_TOOL_CALLS: ToolCall[] = []
@@ -34,33 +31,54 @@ function WelcomeScreen() {
   const { t } = useTranslation()
   const gatewayInfoMap = useUiStore((s) => s.gatewayInfoMap)
   const defaultGatewayId = useUiStore((s) => s.defaultGatewayId)
-  const agentCatalog = useUiStore((s) => s.agentCatalog)
-  const defaultAgentId = useUiStore((s) => s.defaultAgentId)
-  const createTask = useTaskStore((s) => s.createTask)
-  const gateways = Object.values(gatewayInfoMap)
-  const hasMultiple = gateways.length > 1
+  const agentCatalogByGateway = useUiStore((s) => s.agentCatalogByGateway)
+  const pendingNewTask = useTaskStore((s) => s.pendingNewTask)
+  const gateways = useMemo(() => Object.values(gatewayInfoMap), [gatewayInfoMap])
+  const hasMultipleGw = gateways.length > 1
+
+  const [selectedGwId, setSelectedGwId] = useState(pendingNewTask?.gatewayId ?? defaultGatewayId ?? gateways[0]?.id ?? '')
+  const [selectedAgentId, setSelectedAgentId] = useState(pendingNewTask?.agentId ?? 'main')
+  const [gwExpanded, setGwExpanded] = useState(false)
+  const [agentExpanded, setAgentExpanded] = useState(false)
+
+  const gwAgents = agentCatalogByGateway[selectedGwId]
+  const agentCatalog = gwAgents?.agents ?? []
   const hasMultipleAgents = agentCatalog.length > 1
-  const [selectedGwId, setSelectedGwId] = useState(defaultGatewayId ?? gateways[0]?.id ?? '')
-  const [selectedAgentId, setSelectedAgentId] = useState(defaultAgentId)
-
   useEffect(() => {
-    if (defaultGatewayId && !selectedGwId) {
-      setSelectedGwId(defaultGatewayId)
+    if (!selectedGwId) {
+      const fallback = defaultGatewayId ?? gateways[0]?.id ?? ''
+      if (fallback) setSelectedGwId(fallback)
     }
-  }, [defaultGatewayId, selectedGwId])
+  }, [defaultGatewayId, gateways, selectedGwId])
 
   useEffect(() => {
-    setSelectedAgentId(defaultAgentId)
-  }, [defaultAgentId])
+    if (selectedGwId) {
+      fetchAgentsForGateway(selectedGwId)
+    }
+  }, [selectedGwId])
 
-  const selectedAgent = agentCatalog.find((a) => a.id === selectedAgentId)
-  const selectedGw = gatewayInfoMap[selectedGwId]
+  useEffect(() => {
+    if (gwAgents) {
+      setSelectedAgentId(gwAgents.defaultId)
+    } else {
+      setSelectedAgentId('main')
+    }
+  }, [gwAgents])
 
-  const handleCreate = useCallback(() => {
-    const gwId = hasMultiple ? selectedGwId : undefined
-    const agentId = selectedAgentId !== defaultAgentId ? selectedAgentId : undefined
-    createTask(gwId, agentId)
-  }, [createTask, hasMultiple, selectedGwId, selectedAgentId, defaultAgentId])
+  useEffect(() => {
+    const prev = useTaskStore.getState().pendingNewTask
+    if (prev?.gatewayId === selectedGwId && prev?.agentId === selectedAgentId) return
+    useTaskStore.setState({
+      pendingNewTask: { gatewayId: selectedGwId, agentId: selectedAgentId },
+    })
+  }, [selectedGwId, selectedAgentId])
+
+  const MAX_VISIBLE = 3
+
+  const visibleGateways = gwExpanded ? gateways : gateways.slice(0, MAX_VISIBLE)
+  const hiddenGwCount = gateways.length - MAX_VISIBLE
+  const visibleAgents = agentExpanded ? agentCatalog : agentCatalog.slice(0, MAX_VISIBLE)
+  const hiddenAgentCount = agentCatalog.length - MAX_VISIBLE
 
   return (
     <motion.div
@@ -79,68 +97,67 @@ function WelcomeScreen() {
         {t('mainArea.welcomeDesc2')}
       </p>
 
-      <div className="mt-8 flex items-center gap-2">
-        {hasMultiple && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-1.5 text-sm">
-                <Server size={14} />
-                <span className="max-w-[120px] truncate">{selectedGw?.name ?? t('mainArea.selectGateway')}</span>
-                <ChevronDown size={12} className="opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center">
-              {gateways.map((gw) => (
-                <DropdownMenuItem
-                  key={gw.id}
-                  onClick={() => setSelectedGwId(gw.id)}
-                  className={cn(gw.id === selectedGwId && 'font-medium text-[var(--accent)]')}
-                >
-                  <Server size={12} className="mr-2 flex-shrink-0" />
-                  {gw.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        {hasMultipleAgents && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-1.5 text-sm">
-                {selectedAgent?.identity?.emoji ? (
-                  <span className="text-base leading-none">{selectedAgent.identity.emoji}</span>
-                ) : (
-                  <Bot size={14} />
-                )}
-                <span className="max-w-[120px] truncate">
-                  {selectedAgent?.name ?? selectedAgent?.id ?? t('mainArea.selectAgent')}
-                </span>
-                <ChevronDown size={12} className="opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center">
-              {agentCatalog.map((agent) => (
-                <DropdownMenuItem
-                  key={agent.id}
-                  onClick={() => setSelectedAgentId(agent.id)}
-                  className={cn(agent.id === selectedAgentId && 'font-medium text-[var(--accent)]')}
-                >
-                  {agent.identity?.emoji ? (
-                    <span className="mr-2 text-base leading-none">{agent.identity.emoji}</span>
-                  ) : (
-                    <Bot size={12} className="mr-2 flex-shrink-0" />
-                  )}
-                  {agent.name ?? agent.id}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        <Button variant="soft" onClick={handleCreate} className="gap-2">
-          <Plus size={16} />
-          {t('common.newTask')}
-        </Button>
-      </div>
+      {hasMultipleGw && (
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          {visibleGateways.map((gw) => (
+            <button
+              key={gw.id}
+              onClick={() => { setSelectedGwId(gw.id); setGwExpanded(false) }}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer',
+                'border',
+                gw.id === selectedGwId
+                  ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
+                  : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)] hover:text-[var(--text-primary)]',
+              )}
+            >
+              <Server size={12} />
+              <span className="max-w-[100px] truncate">{gw.name}</span>
+            </button>
+          ))}
+          {!gwExpanded && hiddenGwCount > 0 && (
+            <button
+              onClick={() => setGwExpanded(true)}
+              className="inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-full text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+            >
+              +{hiddenGwCount}
+              <ChevronRight size={10} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {hasMultipleAgents && (
+        <div className={cn('flex flex-wrap items-center justify-center gap-2', hasMultipleGw ? 'mt-3' : 'mt-6')}>
+          {visibleAgents.map((agent) => (
+            <button
+              key={agent.id}
+              onClick={() => { setSelectedAgentId(agent.id); setAgentExpanded(false) }}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer',
+                'border',
+                agent.id === selectedAgentId
+                  ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
+                  : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)] hover:text-[var(--text-primary)]',
+              )}
+            >
+              {agent.identity?.emoji
+                ? <span className="text-sm leading-none">{agent.identity.emoji}</span>
+                : <Bot size={12} />}
+              <span className="max-w-[100px] truncate">{agent.name ?? agent.id}</span>
+            </button>
+          ))}
+          {!agentExpanded && hiddenAgentCount > 0 && (
+            <button
+              onClick={() => setAgentExpanded(true)}
+              className="inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-full text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+            >
+              +{hiddenAgentCount}
+              <ChevronRight size={10} />
+            </button>
+          )}
+        </div>
+      )}
 
       <a
         href="https://github.com/clawwork-ai/clawwork"
@@ -164,7 +181,7 @@ function ChatHeader({ onTogglePanel }: { onTogglePanel: () => void }) {
   const gwInfo = activeTask ? gatewayInfoMap[activeTask.gatewayId] : undefined
   const agentInfo = useUiStore((s) =>
     activeTask?.agentId && activeTask.agentId !== 'main'
-      ? s.agentCatalog.find((a) => a.id === activeTask.agentId)
+      ? s.agentCatalogByGateway[activeTask.gatewayId]?.agents.find((a) => a.id === activeTask.agentId)
       : undefined,
   )
 

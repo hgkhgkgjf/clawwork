@@ -236,8 +236,9 @@ export function useGatewayEventDispatcher(): void {
       if (connectedGatewaysRef.current.size > 0 && !syncedRef.current) {
         syncedRef.current = true;
         syncFromGateway();
-        const firstConnected = connectedGatewaysRef.current.values().next().value;
-        if (firstConnected) fetchCatalogs(firstConnected);
+        for (const gwId of connectedGatewaysRef.current) {
+          fetchCatalogs(gwId);
+        }
       }
     });
 
@@ -341,7 +342,7 @@ function autoTitleIfNeeded(taskId: string): void {
 }
 
 async function fetchCatalogs(gatewayId: string): Promise<void> {
-  const { setModelCatalog, setAgentCatalog } = useUiStore.getState();
+  const { setModelCatalogForGateway, setAgentCatalogForGateway } = useUiStore.getState();
   try {
     const [modelsRes, agentsRes] = await Promise.all([
       window.clawwork.listModels(gatewayId),
@@ -349,14 +350,28 @@ async function fetchCatalogs(gatewayId: string): Promise<void> {
     ]);
     if (modelsRes.ok && modelsRes.result) {
       const data = modelsRes.result as unknown as ModelListResponse;
-      if (data.models) setModelCatalog(data.models);
+      if (data.models) setModelCatalogForGateway(gatewayId, data.models);
     }
     if (agentsRes.ok && agentsRes.result) {
       const data = agentsRes.result as unknown as AgentListResponse;
-      if (data.agents) setAgentCatalog(data.agents, data.defaultId);
+      if (data.agents) setAgentCatalogForGateway(gatewayId, data.agents, data.defaultId);
     }
   } catch {
     console.warn('[catalogs] Failed to fetch model/agent catalogs');
+  }
+}
+
+export async function fetchAgentsForGateway(gatewayId: string): Promise<void> {
+  const { setAgentCatalogForGateway, agentCatalogByGateway } = useUiStore.getState();
+  if (agentCatalogByGateway[gatewayId]) return;
+  try {
+    const res = await window.clawwork.listAgents(gatewayId);
+    if (res.ok && res.result) {
+      const data = res.result as unknown as AgentListResponse;
+      if (data.agents) setAgentCatalogForGateway(gatewayId, data.agents, data.defaultId);
+    }
+  } catch {
+    console.warn('[catalogs] Failed to fetch agents for gateway', gatewayId);
   }
 }
 

@@ -22,7 +22,7 @@ export default function LeftNav() {
   const { t } = useTranslation()
   const tasks = useTaskStore((s) => s.tasks)
   const activeTaskId = useTaskStore((s) => s.activeTaskId)
-  const createTask = useTaskStore((s) => s.createTask)
+  const startNewTask = useTaskStore((s) => s.startNewTask)
   const setActiveTask = useTaskStore((s) => s.setActiveTask)
   const updateTaskStatus = useTaskStore((s) => s.updateTaskStatus)
   const mainView = useUiStore((s) => s.mainView)
@@ -92,7 +92,7 @@ export default function LeftNav() {
       <div className="px-4 pb-3 space-y-2 flex-shrink-0">
         {hasMultipleGateways ? (
           <div className="titlebar-no-drag flex items-center gap-0.5">
-            <Button variant="soft" onClick={() => createTask()} className="flex-1 gap-2 rounded-r-none">
+            <Button variant="soft" onClick={() => startNewTask()} className="flex-1 gap-2 rounded-r-none">
               <Plus size={16} /> {t('common.newTask')}
             </Button>
             <DropdownMenu>
@@ -103,7 +103,7 @@ export default function LeftNav() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[160px]">
                 {connectedGateways.map((gw) => (
-                  <DropdownMenuItem key={gw.id} onClick={() => createTask(gw.id)}>
+                  <DropdownMenuItem key={gw.id} onClick={() => startNewTask(gw.id)}>
                     {gw.color ? (
                       <span className="mr-2 w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: gw.color }} />
                     ) : (
@@ -116,7 +116,7 @@ export default function LeftNav() {
             </DropdownMenu>
           </div>
         ) : (
-          <Button variant="soft" onClick={() => createTask()} className="titlebar-no-drag w-full gap-2">
+          <Button variant="soft" onClick={() => startNewTask()} className="titlebar-no-drag w-full gap-2">
             <Plus size={16} /> {t('common.newTask')}
           </Button>
         )}

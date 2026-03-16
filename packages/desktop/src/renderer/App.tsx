@@ -27,7 +27,7 @@ export default function App() {
   const theme = useUiStore((s) => s.theme)
   const setMainView = useUiStore((s) => s.setMainView)
   const focusSearch = useUiStore((s) => s.focusSearch)
-  const createTask = useTaskStore((s) => s.createTask)
+  const startNewTask = useTaskStore((s) => s.startNewTask)
 
   useGatewayEventDispatcher()
   useTheme()
@@ -58,7 +58,7 @@ export default function App() {
 
     if (e.shiftKey && e.code === 'KeyO') {
       e.preventDefault()
-      createTask()
+      startNewTask()
       return
     }
 
@@ -72,7 +72,7 @@ export default function App() {
       e.preventDefault()
       focusSearch()
     }
-  }, [createTask, setMainView, focusSearch])
+  }, [startNewTask, setMainView, focusSearch])
 
   useEffect(() => {
     window.addEventListener('keydown', handleGlobalKeyDown)
