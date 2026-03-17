@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { mkdirSync } from 'fs';
 import { DB_FILE_NAME } from '@clawwork/shared';
 import * as schema from './schema.js';
 import { initFTS } from './fts.js';
@@ -55,6 +56,7 @@ export function initDatabase(workspacePath: string): void {
   if (db) return;
 
   const dbPath = join(workspacePath, DB_FILE_NAME);
+  mkdirSync(dirname(dbPath), { recursive: true });
   sqlite = new Database(dbPath);
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('foreign_keys = ON');
