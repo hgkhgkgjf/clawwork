@@ -108,6 +108,12 @@ export function useGatewayEventDispatcher(): void {
         return;
       }
 
+      const localTasks = useTaskStore.getState().tasks;
+      if (!localTasks.some((t) => t.id === taskId)) {
+        debugEvent('renderer.event.dropped.unknown_task', { taskId, sessionKey, state });
+        return;
+      }
+
       if (taskId !== activeTaskIdRef.current) {
         useUiStore.getState().markUnread(taskId);
       }
@@ -174,6 +180,12 @@ export function useGatewayEventDispatcher(): void {
       }
 
       if (!data.name || !data.toolCallId) return;
+
+      const localTasks = useTaskStore.getState().tasks;
+      if (!localTasks.some((t) => t.id === taskId)) {
+        debugEvent('renderer.agent.dropped.unknown_task', { taskId, sessionKey, stream });
+        return;
+      }
 
       if (taskId !== activeTaskIdRef.current) {
         useUiStore.getState().markUnread(taskId);
