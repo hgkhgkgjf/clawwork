@@ -1,0 +1,100 @@
+name: Dev Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: dev-release
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            build_args: "--mac --universal"
+          - os: windows-latest
+            platform: win
+            build_args: "--win --x64"
+
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Electron app
+        run: pnpm --filter @clawwork/desktop build
+
+      - name: Package (${{ matrix.platform }})
+        run: pnpm --filter @clawwork/desktop exec electron-builder ${{ matrix.build_args }} --publish never -c.buildVersion="$BUILD_VERSION"
+        env:
+          BUILD_VERSION: ${{ github.run_number }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-${{ matrix.platform }}
+          path: |
+            packages/desktop/dist/*.dmg
+            packages/desktop/dist/*.zip
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.blockmap
+          retention-days: 5
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Get short SHA
+        id: meta
+        run: echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Update dev release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev
+          name: "Dev Build (main@${{ steps.meta.outputs.short_sha }})"
+          body: |
+            Automated dev build from `main` branch.
+
+            **Commit:** ${{ github.sha }}
+            **Date:** ${{ github.event.head_commit.timestamp }}
+            **Message:** ${{ github.event.head_commit.message }}
+
+            > This is a development build and may be unstable. For stable releases, see the [latest release](../../releases/latest).
+          files: artifacts/*
+          prerelease: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
