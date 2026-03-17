@@ -148,4 +148,4 @@ See memory files for detailed phase history and technical pitfalls discovered du
 ## Design Documents
 
 - Full design doc: `docs/openclaw-desktop-design.md` (v0.2)
-- Design system spec: `design-system.md`
+- Design system spec: `docs/design-system.md`

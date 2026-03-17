@@ -11,7 +11,7 @@ if (!window.clawwork) {
   const root = document.getElementById('root')!;
   const wrapper = document.createElement('div');
   wrapper.style.cssText =
-    'display:flex;align-items:center;justify-content:center;height:100vh;color:var(--danger,#ef4444);font-family:monospace;padding:2rem;text-align:center';
+    'display:flex;align-items:center;justify-content:center;height:100vh;color:var(--danger);font-family:monospace;padding:2rem;text-align:center';
   const heading = document.createElement('h2');
   heading.textContent = 'Preload bridge missing';
   const detail = document.createElement('p');

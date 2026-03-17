@@ -3,8 +3,8 @@
 @import '@fontsource-variable/jetbrains-mono';
 
 /* ============================================================
-   ClawWork Design System — Theme Variables
-   See design-system.md for full specification.
+   ClawWork Design System - Theme Variables
+   See docs/design-system.md for full specification.
    ============================================================ */
 
 @layer base {
@@ -15,6 +15,7 @@
     --bg-tertiary: #2a2a2a;
     --bg-hover: #333333;
     --accent: #0ffd0d;
+    --accent-foreground: #041204;
     --accent-dim: rgba(15, 253, 13, 0.15);
     --text-primary: #f3f4f4;
     --text-secondary: #9ca3af;
@@ -48,6 +49,7 @@
     --bg-tertiary: #f3f4f6;
     --bg-hover: #e5e7eb;
     --accent: #0b8a0a;
+    --accent-foreground: #ffffff;
     --accent-dim: rgba(11, 138, 10, 0.1);
     --text-primary: #111827;
     --text-secondary: #6b7280;

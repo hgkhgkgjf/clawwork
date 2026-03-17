@@ -35,6 +35,9 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      - name: Architecture guardrails
+        run: pnpm check:architecture
+
   test:
     needs: [quality]
     runs-on: ubuntu-latest

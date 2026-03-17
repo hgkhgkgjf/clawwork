@@ -20,6 +20,13 @@ Explain the user problem, engineering problem, or follow-up this PR addresses.
 
 -
 
+## Architecture impact
+
+- Owning layer: shared / main / preload / renderer
+- Cross-layer impact: none / yes (explain)
+- Invariants touched from `docs/architecture-invariants.md`:
+- Why those invariants remain protected:
+
 ## Linked issues
 
 Closes #
@@ -42,6 +49,8 @@ Commands, screenshots, or notes:
 
 If the change affects the UI, add screenshots or a short recording.
 
+If the change touches `docs/design-system.md`, renderer styles, layout, spacing, component states, or interaction polish, explain which tokens, variables, or states were intentionally preserved or changed.
+
 ## Release note
 
 - [ ] No user-facing change. Release note is `NONE`.
@@ -56,4 +65,6 @@ NONE
 - [ ] The PR title uses at least one approved prefix: `[Feat]`, `[Fix]`, `[UI]`, `[Docs]`, `[Refactor]`, `[Build]`, or `[Chore]`
 - [ ] The summary explains both what changed and why
 - [ ] Validation reflects the commands actually run for this PR
+- [ ] Architecture impact is described and references any touched invariants
+- [ ] Cross-layer changes are explicitly justified
 - [ ] The release note block is accurate

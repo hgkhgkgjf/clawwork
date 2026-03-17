@@ -7,6 +7,7 @@
     "prepare": "husky",
     "dev": "pnpm --filter @clawwork/desktop dev",
     "build": "pnpm -r build",
+    "check:architecture": "node scripts/check-architecture.mjs",
     "typecheck": "pnpm --filter @clawwork/shared exec tsc -b && pnpm --filter @clawwork/desktop exec tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -16,7 +17,7 @@
     "test:e2e": "playwright test --config=e2e/playwright.config.ts",
     "test:e2e:smoke": "playwright test --config=e2e/playwright.config.ts --project=smoke",
     "test:e2e:gateway": "playwright test --config=e2e/playwright.config.ts --project=gateway",
-    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test"
+    "check": "pnpm lint && pnpm check:architecture && pnpm format:check && pnpm typecheck && pnpm test"
   },
   "lint-staged": {
     "*.{ts,tsx,mts,cts,js,mjs,cjs}": [
