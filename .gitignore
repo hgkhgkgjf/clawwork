@@ -30,3 +30,7 @@ package-lock.json
 
 # OS
 Thumbs.db
+
+# test
+test-results/
+playwright-report/

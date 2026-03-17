@@ -8,10 +8,16 @@
     "build": "pnpm -r build",
     "typecheck": "packages/desktop/node_modules/.bin/tsc -b packages/shared/tsconfig.json && packages/desktop/node_modules/.bin/tsc --noEmit -p packages/desktop/tsconfig.json",
     "lint": "pnpm -r lint",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts",
+    "test:e2e:smoke": "playwright test --config=e2e/playwright.config.ts --project=smoke",
+    "test:e2e:gateway": "playwright test --config=e2e/playwright.config.ts --project=gateway"
   },
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
   }
 }
