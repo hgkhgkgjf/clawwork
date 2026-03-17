@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, globalShortcut, dialog } from 'electron';
+import { app, shell, BrowserWindow, Menu, ipcMain, globalShortcut, dialog } from 'electron';
 import { join } from 'path';
 import { writeFileSync } from 'fs';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
@@ -59,6 +59,9 @@ function setupDevScreenshot(win: BrowserWindow): void {
 
 function createWindow(): BrowserWindow {
   getDebugLogger().info({ domain: 'app', event: 'app.window.create' });
+  if (process.platform !== 'darwin') {
+    Menu.setApplicationMenu(null);
+  }
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
