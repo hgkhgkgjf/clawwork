@@ -1,6 +1,7 @@
 # ClawWork — Application Design Document
 
 > OpenClaw ClawWork · Version: v0.2 | Date: 2026-03-12 | Authors: samzong + Claude
+> Historical note: this is the project bootstrap design document. It is kept to preserve the original design context; new designs may borrow from it, but should not follow it mechanically.
 
 ---
 

@@ -1,21 +1,21 @@
-* @samzong @yankay
+- @samzong
 
-/AGENTS.md @samzong @yankay
-/DEVELOPMENT.md @samzong @yankay
-/CLAUDE.md @samzong @yankay
-/CONTRIBUTING.md @samzong @yankay
-/docs/design-system.md @samzong @yankay
-/docs/openclaw-desktop-design.md @samzong @yankay
+/AGENTS.md @samzong
+/DEVELOPMENT.md @samzong
+/CLAUDE.md @samzong
+/CONTRIBUTING.md @samzong
+/docs/design-system.md @samzong
+/docs/openclaw-desktop-design.md @samzong
 
-/packages/shared/src/** @samzong @yankay
-/packages/desktop/src/main/ws/** @samzong @yankay
-/packages/desktop/src/main/ipc/** @samzong @yankay
-/packages/desktop/src/main/artifact/** @samzong @yankay
-/packages/desktop/src/main/workspace/** @samzong @yankay
-/packages/desktop/src/main/context/** @samzong @yankay
-/packages/desktop/src/preload/** @samzong @yankay
-/packages/desktop/src/renderer/styles/** @samzong @yankay
+/packages/shared/src/** @samzong
+/packages/desktop/src/main/ws/** @samzong
+/packages/desktop/src/main/ipc/** @samzong
+/packages/desktop/src/main/artifact/** @samzong
+/packages/desktop/src/main/workspace/** @samzong
+/packages/desktop/src/main/context/** @samzong
+/packages/desktop/src/preload/** @samzong
+/packages/desktop/src/renderer/styles/** @samzong
 
-/.github/workflows/** @samzong @yankay
-/.github/PULL_REQUEST_TEMPLATE.md @samzong @yankay
-/.github/ISSUE_TEMPLATE/** @samzong @yankay
+/.github/workflows/** @samzong
+/.github/PULL_REQUEST_TEMPLATE.md @samzong
+/.github/ISSUE_TEMPLATE/** @samzong

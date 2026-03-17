@@ -2,6 +2,7 @@
 
 > Source of truth: reverse-engineered from `~/git/openclaw` (version 2026.3.14)
 > Date: 2026-03-16
+> Maintenance note: this whitepaper was originally organized from the 2026.3.12-era Gateway implementation and should be refreshed periodically as OpenClaw evolves.
 
 ---
 

@@ -11,7 +11,7 @@ function RiskBadge({ security }: { security?: string | null }) {
     return (
       <span
         className="rounded px-1.5 py-0.5 text-xs font-medium"
-        style={{ background: 'color-mix(in srgb, var(--danger) 15%, var(--bg-elevated))', color: 'var(--danger)' }}
+        style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}
       >
         {t('approval.riskHigh')}
       </span>
