@@ -66,28 +66,80 @@ describe('isPrivateIP', () => {
     expect(isPrivateIP('::1')).toBe(true);
   });
 
+  it('blocks zone-scoped IPv6 loopback', () => {
+    expect(isPrivateIP('::1%lo0')).toBe(true);
+  });
+
   it('blocks IPv6 unspecified ::', () => {
     expect(isPrivateIP('::')).toBe(true);
+  });
+
+  it('blocks IPv6 uncompressed loopback', () => {
+    expect(isPrivateIP('0000:0000:0000:0000:0000:0000:0000:0001')).toBe(true);
+  });
+
+  it('blocks IPv6 loopback with stripped zeros', () => {
+    expect(isPrivateIP('0:0:0:0:0:0:0:1')).toBe(true);
+  });
+
+  it('blocks IPv6 alternate loopback compression', () => {
+    expect(isPrivateIP('0::1')).toBe(true);
+  });
+
+  it('blocks IPv6 uncompressed unspecified', () => {
+    expect(isPrivateIP('0000:0000:0000:0000:0000:0000:0000:0000')).toBe(true);
   });
 
   it('blocks IPv6 ULA fd12:3456::1', () => {
     expect(isPrivateIP('fd12:3456::1')).toBe(true);
   });
 
+  it('blocks zone-scoped IPv6 ULA', () => {
+    expect(isPrivateIP('fd12::1%en0')).toBe(true);
+  });
+
   it('blocks IPv6 ULA fc00::1', () => {
     expect(isPrivateIP('fc00::1')).toBe(true);
+  });
+
+  it('blocks IPv6 uncompressed ULA', () => {
+    expect(isPrivateIP('fc00:0000:0000:0000:0000:0000:0000:0001')).toBe(true);
   });
 
   it('blocks IPv6 link-local fe80::1', () => {
     expect(isPrivateIP('fe80::1')).toBe(true);
   });
 
+  it('blocks zone-scoped IPv6 link-local', () => {
+    expect(isPrivateIP('fe80::1%lo0')).toBe(true);
+  });
+
+  it('blocks IPv6 uncompressed link-local', () => {
+    expect(isPrivateIP('fe80:0000:0000:0000:0000:0000:0000:0001')).toBe(true);
+  });
+
   it('allows public IPv6 2001:4860:4860::8888', () => {
     expect(isPrivateIP('2001:4860:4860::8888')).toBe(false);
   });
 
+  it('allows public IPv6 uncompressed 2001:4860:4860:0000:0000:0000:0000:8888', () => {
+    expect(isPrivateIP('2001:4860:4860:0000:0000:0000:0000:8888')).toBe(false);
+  });
+
   it('blocks IPv4-mapped IPv6 ::ffff:10.0.0.1', () => {
     expect(isPrivateIP('::ffff:10.0.0.1')).toBe(true);
+  });
+
+  it('blocks IPv4-compatible IPv6 ::127.0.0.1', () => {
+    expect(isPrivateIP('::127.0.0.1')).toBe(true);
+  });
+
+  it('blocks IPv4-compatible IPv6 hex loopback', () => {
+    expect(isPrivateIP('::7f00:1')).toBe(true);
+  });
+
+  it('blocks uncompressed IPv4-compatible IPv6 loopback', () => {
+    expect(isPrivateIP('0:0:0:0:0:0:127.0.0.1')).toBe(true);
   });
 
   it('blocks IPv4-mapped IPv6 hex form ::ffff:a00:1', () => {
@@ -96,6 +148,26 @@ describe('isPrivateIP', () => {
 
   it('allows IPv4-mapped IPv6 public ::ffff:8.8.8.8', () => {
     expect(isPrivateIP('::ffff:8.8.8.8')).toBe(false);
+  });
+
+  it('allows IPv4-compatible IPv6 public address', () => {
+    expect(isPrivateIP('::8.8.8.8')).toBe(false);
+  });
+
+  it('allows public IPv6 that ends with an IPv4-mapped-looking tail', () => {
+    expect(isPrivateIP('2001:db8::ffff:127.0.0.1')).toBe(false);
+  });
+
+  it('blocks uncompressed IPv4-mapped IPv6 loopback', () => {
+    expect(isPrivateIP('0000:0000:0000:0000:0000:ffff:127.0.0.1')).toBe(true);
+  });
+
+  it('blocks uncompressed IPv4-mapped IPv6 loopback in hex form', () => {
+    expect(isPrivateIP('0000:0000:0000:0000:0000:ffff:7f00:1')).toBe(true);
+  });
+
+  it('allows uncompressed IPv4-mapped IPv6 public address', () => {
+    expect(isPrivateIP('0000:0000:0000:0000:0000:ffff:8.8.8.8')).toBe(false);
   });
 
   it('returns false for non-IP strings', () => {
@@ -112,6 +184,11 @@ describe('isPrivateHost', () => {
 
   it('blocks private IPs', () => {
     expect(isPrivateHost('10.0.0.1')).toBe(true);
+  });
+
+  it('blocks bracketed IPv6 literals from URL.hostname', () => {
+    expect(isPrivateHost('[::1]')).toBe(true);
+    expect(isPrivateHost('[::7f00:1]')).toBe(true);
   });
 
   it('allows public domains', () => {
@@ -133,6 +210,12 @@ describe('assertNotPrivateHost', () => {
 
   it('rejects localhost immediately without DNS', async () => {
     await expect(assertNotPrivateHost('localhost')).rejects.toThrow('SSRF blocked');
+  });
+
+  it('rejects bracketed IPv6 loopback immediately without DNS', async () => {
+    await expect(assertNotPrivateHost('[::1]')).rejects.toThrow('SSRF blocked');
+    expect(mockResolve4).not.toHaveBeenCalled();
+    expect(mockResolve6).not.toHaveBeenCalled();
   });
 
   it('allows public IP without DNS', async () => {
